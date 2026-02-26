@@ -1,0 +1,309 @@
+/**
+ * Leaflet Widget Generator
+ * =========================
+ * Generates Leaflet.js map HTML widgets from a typed configuration object.
+ *
+ * Supports:
+ *  - Multiple tile provider presets (OpenStreetMap, OpenTopoMap, Stadia, custom)
+ *  - GeoJSON overlay layers with custom styling
+ *  - Markers with popup HTML
+ *  - Scale bar, zoom control, layer control
+ *  - Self-contained HTML output (CDN-bundled Leaflet) or inline-only JS snippet
+ *
+ * @example
+ * ```typescript
+ * import { LeafletWidgetGenerator } from './LeafletWidgetGenerator';
+ *
+ * const gen = new LeafletWidgetGenerator({
+ *   containerId: 'map',
+ *   view: { lat: 51.505, lng: -0.09, zoom: 13 },
+ *   tileProvider: 'openstreetmap',
+ *   selfContained: true,
+ * });
+ *
+ * document.body.innerHTML = gen.generate();
+ * ```
+ */
+
+import type {
+  GeoJsonLayerConfig,
+  MarkerConfig,
+  TileProvider,
+  WidgetConfig,
+} from "./types.js";
+
+// ---------------------------------------------------------------------------
+// Tile provider registry
+// ---------------------------------------------------------------------------
+
+interface TileLayerDef {
+  url: string;
+  attribution: string;
+  maxZoom: number;
+}
+
+const TILE_PROVIDERS: Record<TileProvider, TileLayerDef | null> = {
+  openstreetmap: {
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  },
+  opentopomap: {
+    url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+    attribution:
+      'Map data: &copy; <a href="https://openstreetmap.org">OpenStreetMap</a>, ' +
+      '<a href="http://viewfinderpanoramas.org">SRTM</a> | ' +
+      'Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+    maxZoom: 17,
+  },
+  "stadia-alidade-smooth": {
+    url: "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png",
+    attribution:
+      '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> ' +
+      '&copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> ' +
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 20,
+  },
+  custom: null, // populated from WidgetConfig.tileUrl / tileAttribution
+};
+
+// ---------------------------------------------------------------------------
+// LeafletWidgetGenerator
+// ---------------------------------------------------------------------------
+
+/**
+ * Generates Leaflet map widgets from a {@link WidgetConfig}.
+ *
+ * Call {@link generate} to produce a self-contained HTML string or a JS-only
+ * snippet depending on `config.selfContained`.
+ */
+export class LeafletWidgetGenerator {
+  private readonly config: Required<
+    Pick<WidgetConfig, "containerId" | "view"> & Partial<WidgetConfig>
+  > &
+    WidgetConfig;
+
+  /**
+   * @param config - Widget configuration.  See {@link WidgetConfig} for all
+   *   placeholder descriptions.
+   */
+  constructor(config: WidgetConfig) {
+    this.config = {
+      height: "500px",
+      width: "100%",
+      tileProvider: "openstreetmap",
+      geoJsonLayers: [],
+      markers: [],
+      showZoomControl: true,
+      showLayerControl: true,
+      selfContained: false,
+      ...config,
+    };
+    this._validate();
+  }
+
+  // ------------------------------------------------------------------
+  // Public API
+  // ------------------------------------------------------------------
+
+  /**
+   * Generate the widget HTML string.
+   *
+   * When `selfContained` is `true`, the returned string is a complete,
+   * portable `<div>` + `<script>` pair that loads Leaflet from the UNPKG
+   * CDN and can be dropped into any page.
+   *
+   * When `selfContained` is `false` (default), only the initialisation
+   * `<script>` block is returned — Leaflet must already be loaded on the page.
+   *
+   * @returns HTML/JS string ready to insert into a page.
+   */
+  public generate(): string {
+    if (this.config.selfContained) {
+      return this._buildSelfContained();
+    }
+    return this._buildInitScript();
+  }
+
+  /**
+   * Write the generated widget to a string without side effects.
+   * Alias for {@link generate} kept for API symmetry.
+   */
+  public toString(): string {
+    return this.generate();
+  }
+
+  // ------------------------------------------------------------------
+  // Private builders
+  // ------------------------------------------------------------------
+
+  /** Emit a full self-contained HTML snippet (CDN Leaflet + CSS + init). */
+  private _buildSelfContained(): string {
+    const LEAFLET_VERSION = "1.9.4"; // <!-- PLACEHOLDER: update Leaflet version as needed -->
+    const cdnBase = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist`;
+
+    const containerStyle = [
+      `height: ${this.config.height ?? "500px"}`,
+      `width: ${this.config.width ?? "100%"}`,
+    ].join("; ");
+
+    const initScript = this._buildInitScript();
+
+    return `<!-- Leaflet Widget — generated by GeoScriptHub LeafletWidgetGenerator -->
+<link rel="stylesheet" href="${cdnBase}/leaflet.css" />
+<script src="${cdnBase}/leaflet.js"></script>
+<div id="${this.config.containerId}" style="${containerStyle}"></div>
+${initScript}`;
+  }
+
+  /** Emit only the <script> initialisation block. */
+  private _buildInitScript(): string {
+    const lines: string[] = [];
+    const mapVar = `_map_${this.config.containerId.replace(/[^a-zA-Z0-9]/g, "_")}`;
+    const { view, showZoomControl } = this.config;
+
+    // Map init
+    lines.push(
+      `(function () {`,
+      `  // Initialise Leaflet map`,
+      `  var ${mapVar} = L.map('${this.config.containerId}', {`,
+      `    center: [${view.lat}, ${view.lng}],`,
+      `    zoom: ${view.zoom},`,
+      `    zoomControl: ${showZoomControl ? "true" : "false"},`,
+      `  });`,
+    );
+
+    // Tile layer
+    const tile = this._resolveTileLayer();
+    lines.push(
+      ``,
+      `  // Tile basemap — ${this.config.tileProvider}`,
+      `  L.tileLayer('${tile.url}', {`,
+      `    maxZoom: ${tile.maxZoom},`,
+      `    attribution: '${tile.attribution.replace(/'/g, "\\'")}',`,
+      `  }).addTo(${mapVar});`,
+    );
+
+    // Scale control
+    if (this.config.scaleControl) {
+      const sc = this.config.scaleControl;
+      lines.push(
+        ``,
+        `  // Scale bar`,
+        `  L.control.scale({`,
+        `    position: '${sc.position ?? "bottomleft"}',`,
+        `    metric: ${sc.metric !== false},`,
+        `    imperial: ${sc.imperial === true},`,
+        `  }).addTo(${mapVar});`,
+      );
+    }
+
+    // Markers
+    const markers = this.config.markers ?? [];
+    if (markers.length > 0) {
+      lines.push(``, `  // Markers`);
+      markers.forEach((m, i) => {
+        const varName = `_marker_${i}`;
+        lines.push(`  var ${varName} = L.marker([${m.lat}, ${m.lng}]).addTo(${mapVar});`);
+        if (m.popupHtml) {
+          lines.push(`  ${varName}.bindPopup(\`${m.popupHtml.replace(/`/g, "\\`")}\`);`);
+        }
+      });
+    }
+
+    // GeoJSON layers + layer control
+    const geoJsonLayers = this.config.geoJsonLayers ?? [];
+    if (geoJsonLayers.length > 0) {
+      lines.push(``, `  // GeoJSON overlay layers`);
+      const overlayEntries: string[] = [];
+
+      geoJsonLayers.forEach((layer, i) => {
+        const lVar = `_layer_${i}`;
+        lines.push(
+          `  var ${lVar} = L.layerGroup();`,
+          `  fetch('${layer.url}')`,
+          `    .then(function (r) { return r.json(); })`,
+          `    .then(function (data) {`,
+          `      L.geoJSON(data, {`,
+          `        style: function () {`,
+          `          return {`,
+          `            fillColor: '${layer.fillColor ?? "#3388ff"}',`,
+          `            color: '${layer.color ?? "#3366ff"}',`,
+          `            weight: ${layer.weight ?? 2},`,
+          `            fillOpacity: 0.4,`,
+          `          };`,
+          `        },`,
+          `      }).addTo(${lVar});`,
+          `    });`,
+        );
+        if (layer.visible !== false) {
+          lines.push(`  ${lVar}.addTo(${mapVar});`);
+        }
+        overlayEntries.push(`    '${layer.name.replace(/'/g, "\\'")}': ${lVar}`);
+      });
+
+      // Layer control
+      if (this.config.showLayerControl && geoJsonLayers.length > 0) {
+        lines.push(
+          ``,
+          `  // Layer control`,
+          `  L.control.layers({}, {`,
+          overlayEntries.join(",\n"),
+          `  }).addTo(${mapVar});`,
+        );
+      }
+    }
+
+    lines.push(`})();`);
+
+    return `<script>\n${lines.join("\n")}\n</script>`;
+  }
+
+  /** Resolve the TileLayerDef from the config. */
+  private _resolveTileLayer(): Required<TileLayerDef> {
+    if (this.config.tileProvider === "custom") {
+      if (!this.config.tileUrl) {
+        throw new Error(
+          "tileUrl is required when tileProvider is 'custom'. " +
+            "<!-- PLACEHOLDER: set tileUrl in your WidgetConfig -->",
+        );
+      }
+      return {
+        url: this.config.tileUrl,
+        attribution: this.config.tileAttribution ?? "",
+        maxZoom: 19,
+      };
+    }
+
+    const def = TILE_PROVIDERS[this.config.tileProvider ?? "openstreetmap"];
+    if (!def) {
+      throw new Error(`Unknown tile provider: ${String(this.config.tileProvider)}`);
+    }
+
+    let url = def.url;
+    if (this.config.tileProvider === "stadia-alidade-smooth" && this.config.stadiaApiKey) {
+      // PLACEHOLDER: Stadia Maps API key appended as query parameter
+      url += `?api_key=${this.config.stadiaApiKey}`;
+    }
+
+    return { ...def, url };
+  }
+
+  /** Basic configuration validation. */
+  private _validate(): void {
+    if (!this.config.containerId) {
+      throw new Error("containerId is required. <!-- PLACEHOLDER: set containerId in WidgetConfig -->");
+    }
+    const { lat, lng, zoom } = this.config.view;
+    if (lat < -90 || lat > 90) {
+      throw new Error(`view.lat must be in [-90, 90], got ${lat}`);
+    }
+    if (lng < -180 || lng > 180) {
+      throw new Error(`view.lng must be in [-180, 180], got ${lng}`);
+    }
+    if (zoom < 0 || zoom > 22) {
+      throw new Error(`view.zoom must be in [0, 22], got ${zoom}`);
+    }
+  }
+}

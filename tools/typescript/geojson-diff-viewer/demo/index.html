@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GeoJSON Diff Viewer — Demo | GeoScriptHub</title>
+
+  <!-- Leaflet CSS (CDN) -->
+  <!-- PLACEHOLDER: Pin to a specific version, e.g. leaflet@1.9.4 -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  />
+
+  <style>
+    /* -----------------------------------------------------------------------
+       Page Layout
+       PLACEHOLDER: Replace with your own brand colours / fonts.
+    ----------------------------------------------------------------------- */
+    :root {
+      --brand-dark:  #1a1a2e;
+      --brand-mid:   #16213e;
+      --brand-accent:#00d9ff;
+      --text:        #e0e0e0;
+      --surface:     #0f3460;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", Roboto, sans-serif;
+      background: var(--brand-dark);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--brand-mid);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 2px solid var(--brand-accent);
+    }
+
+    header h1 { font-size: 1.4rem; color: var(--brand-accent); }
+    header p  { font-size: 0.85rem; opacity: 0.7; }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto 1fr;
+      gap: 16px;
+      padding: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .editor-panel {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .editor-panel label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      opacity: .75;
+    }
+
+    textarea {
+      flex: 1;
+      resize: vertical;
+      min-height: 200px;
+      background: #0d1b2a;
+      color: #a8d8a8;
+      border: 1px solid #2a4a6a;
+      border-radius: 6px;
+      padding: 10px;
+      font: 12px/1.5 "Fira Mono", "Consolas", monospace;
+      outline: none;
+    }
+
+    textarea:focus { border-color: var(--brand-accent); }
+
+    .controls {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    button {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: filter .15s;
+    }
+    button:hover { filter: brightness(1.15); }
+
+    #btn-compare  { background: var(--brand-accent); color: var(--brand-dark); }
+    #btn-reset    { background: var(--surface); color: var(--text); border: 1px solid #2a4a6a; }
+    #btn-fullscreen { background: var(--surface); color: var(--text); border: 1px solid #2a4a6a; }
+
+    #status {
+      font-size: 0.85rem;
+      opacity: .7;
+      margin-left: auto;
+    }
+
+    .map-wrapper {
+      grid-column: 1 / -1;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #2a4a6a;
+    }
+
+    /* PLACEHOLDER: Set this to the desired map height. */
+    #diff-map { height: 500px; width: 100%; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🗺 GeoJSON Diff Viewer</h1>
+    <p>Paste two GeoJSON FeatureCollections and click <strong>Compare</strong> to see what changed.</p>
+  </div>
+</header>
+
+<main>
+  <!-- Before editor -->
+  <div class="editor-panel">
+    <label for="before-input">Before (reference / older state)</label>
+    <textarea id="before-input" spellcheck="false" placeholder='{"type":"FeatureCollection","features":[]}'></textarea>
+  </div>
+
+  <!-- After editor -->
+  <div class="editor-panel">
+    <label for="after-input">After (updated state)</label>
+    <textarea id="after-input" spellcheck="false" placeholder='{"type":"FeatureCollection","features":[]}'></textarea>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button id="btn-compare">Compare</button>
+    <button id="btn-reset">Reset</button>
+    <button id="btn-fullscreen">Fullscreen Map</button>
+    <span id="status">Load sample data below, or paste your own GeoJSON.</span>
+  </div>
+
+  <!-- Map -->
+  <div class="map-wrapper">
+    <!-- PLACEHOLDER: Change the id to match your DiffViewerConfig.containerId -->
+    <div id="diff-map"></div>
+  </div>
+</main>
+
+<!-- Leaflet JS (CDN) -->
+<!-- PLACEHOLDER: Keep in sync with the leaflet CSS version above. -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+<!-- Widget JS (built bundle) -->
+<!-- PLACEHOLDER: Run `pnpm build` first; path below points to the UMD bundle. -->
+<script src="../dist/geojson-diff-viewer.umd.cjs"></script>
+
+<script>
+  // -------------------------------------------------------------------------
+  // Sample data
+  // PLACEHOLDER: Replace with GeoJSON relevant to your own project.
+  // -------------------------------------------------------------------------
+  const BEFORE_SAMPLE = JSON.stringify({
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        id: "park-001",
+        properties: { name: "Central Park", area_ha: 340 },
+        geometry: {
+          type: "Polygon",
+          coordinates: [[
+            [-73.9812, 40.7681],
+            [-73.9490, 40.7681],
+            [-73.9490, 40.7964],
+            [-73.9812, 40.7964],
+            [-73.9812, 40.7681]
+          ]]
+        }
+      },
+      {
+        type: "Feature",
+        id: "park-002",
+        properties: { name: "Riverside Park", area_ha: 176 },
+        geometry: {
+          type: "Point",
+          coordinates: [-73.9897, 40.8020]
+        }
+      }
+    ]
+  }, null, 2);
+
+  const AFTER_SAMPLE = JSON.stringify({
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        id: "park-001",  // same id → unchanged
+        properties: { name: "Central Park", area_ha: 340 },
+        geometry: {
+          type: "Polygon",
+          coordinates: [[
+            [-73.9812, 40.7681],
+            [-73.9490, 40.7681],
+            [-73.9490, 40.7964],
+            [-73.9812, 40.7964],
+            [-73.9812, 40.7681]
+          ]]
+        }
+      },
+      // park-002 removed
+      {
+        type: "Feature",
+        id: "park-003",  // new feature → added
+        properties: { name: "Prospect Park", area_ha: 212 },
+        geometry: {
+          type: "Point",
+          coordinates: [-73.9690, 40.6602]
+        }
+      }
+    ]
+  }, null, 2);
+
+  // -------------------------------------------------------------------------
+  // Initialise viewer
+  // PLACEHOLDER: Adjust tileUrl / containerId to match your setup.
+  // -------------------------------------------------------------------------
+  const viewer = new GeoJsonDiffViewer.GeoJsonDiffViewer({
+    containerId: "diff-map",
+    height: "500px",
+    // PLACEHOLDER: Replace with your preferred tile provider URL.
+    tileUrl: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    tileAttribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    showLegend: true,
+    diffOptions: {
+      // PLACEHOLDER: Set to the unique property key in your data, or null.
+      matchBy: null
+    }
+  });
+
+  viewer.mount();
+
+  // Pre-fill textareas with sample data
+  document.getElementById("before-input").value = BEFORE_SAMPLE;
+  document.getElementById("after-input").value = AFTER_SAMPLE;
+
+  // Run an initial comparison with sample data
+  function runCompare() {
+    const statusEl = document.getElementById("status");
+    try {
+      const before = JSON.parse(document.getElementById("before-input").value);
+      const after  = JSON.parse(document.getElementById("after-input").value);
+      viewer.update(before, after);
+      statusEl.textContent = "✔ Diff updated successfully.";
+    } catch (err) {
+      statusEl.textContent = "✖ Invalid JSON — " + err.message;
+    }
+  }
+
+  document.getElementById("btn-compare").addEventListener("click", runCompare);
+
+  document.getElementById("btn-reset").addEventListener("click", () => {
+    document.getElementById("before-input").value = BEFORE_SAMPLE;
+    document.getElementById("after-input").value  = AFTER_SAMPLE;
+    document.getElementById("status").textContent  = "Reset to sample data.";
+  });
+
+  document.getElementById("btn-fullscreen").addEventListener("click", () => {
+    const map = document.getElementById("diff-map");
+    if (map.requestFullscreen) map.requestFullscreen();
+  });
+
+  // Run on load
+  runCompare();
+</script>
+
+</body>
+</html>

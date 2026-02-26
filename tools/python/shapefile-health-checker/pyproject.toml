@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "geoscripthub-shapefile-health-checker"
+version = "1.0.0"
+description = "Validate Shapefile / GeoJSON / GeoPackage files with six configurable health checks"
+readme = "README.md"
+license = { file = "../../LICENSE" }
+requires-python = ">=3.11"
+
+# PLACEHOLDER: replace YOUR_GITHUB_USERNAME with your actual GitHub username
+authors = [{ name = "YOUR_GITHUB_USERNAME" }]
+
+keywords = ["gis", "geospatial", "shapefile", "validation", "health-check", "geopandas"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+
+dependencies = [
+    "geopandas>=0.14",
+    "shapely>=2.0",
+    "click>=8.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+    "mypy>=1.8",
+]
+
+[project.scripts]
+# Installs `geo-check` command when the package is installed
+geo-check = "src.shapefile_health_checker.cli:main"
+
+# PLACEHOLDER: replace YOUR_GITHUB_USERNAME with your actual GitHub username
+[project.urls]
+"Homepage" = "https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub"
+"Source" = "https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/tree/main/tools/python/shapefile-health-checker"
+"Bug Tracker" = "https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/issues"
+
+[tool.ruff]
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "PIE", "PLC"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"

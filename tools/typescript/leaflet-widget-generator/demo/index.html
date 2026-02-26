@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- PLACEHOLDER: Replace "My Map Demo" with your page title -->
+  <title>Leaflet Widget Generator — Live Demo</title>
+  <style>
+    /* PLACEHOLDER: Adjust page-level styles to match your site */
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f5f5f5; }
+    header {
+      background: #2c3e50; color: #fff; padding: 1rem 2rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    header h1 { margin: 0; font-size: 1.4rem; }
+    main { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+    .card {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.12); overflow: hidden;
+      margin-bottom: 2rem;
+    }
+    .card h2 { margin: 0; padding: 1rem 1.5rem; background: #ecf0f1; font-size: 1rem; }
+    .map-wrap { padding: 1rem; }
+
+    /* PLACEHOLDER: Adjust map container sizes to suit your layout */
+    #map-basic        { height: 400px; }
+    #map-markers      { height: 400px; }
+    #map-geojson      { height: 400px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🗺️ Leaflet Widget Generator — Demo</h1>
+</header>
+
+<main>
+
+  <!-- ──────────────────────────────────────────── -->
+  <!-- Demo 1: Basic OSM map                       -->
+  <!-- ──────────────────────────────────────────── -->
+  <section class="card">
+    <h2>Demo 1 — Basic OpenStreetMap</h2>
+    <div class="map-wrap">
+      <div id="map-basic"></div>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────────── -->
+  <!-- Demo 2: Map with markers + popups           -->
+  <!-- ──────────────────────────────────────────── -->
+  <section class="card">
+    <h2>Demo 2 — Markers with Popups</h2>
+    <div class="map-wrap">
+      <div id="map-markers"></div>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────────── -->
+  <!-- Demo 3: GeoJSON overlay + scale bar         -->
+  <!-- ──────────────────────────────────────────── -->
+  <section class="card">
+    <h2>Demo 3 — GeoJSON Overlay + Scale Bar</h2>
+    <div class="map-wrap">
+      <div id="map-geojson"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Leaflet CSS + JS from CDN (same version used by the generator) -->
+<!-- PLACEHOLDER: Pin to a specific Leaflet version for production -->
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- The compiled library bundle (run `pnpm build` to generate) -->
+<!-- PLACEHOLDER: Update path if deploying outside Vite dev server -->
+<script type="module">
+  import { LeafletWidgetGenerator } from "../dist/leaflet-widget-generator.js";
+
+  // ── Demo 1: Basic OSM map ──────────────────────────────────────────────
+  new LeafletWidgetGenerator({
+    containerId: "map-basic",
+    height: "400px",
+    // PLACEHOLDER: Change centre coordinates to your area of interest
+    view: { lat: 51.505, lng: -0.09, zoom: 13 },
+    tileProvider: "openstreetmap",
+    scaleControl: { position: "bottomleft", metric: true },
+  }).generate();
+
+  // initialise (the script block is inserted into innerHTML dynamically)
+  const demo1Script = new LeafletWidgetGenerator({
+    containerId: "map-basic",
+    height: "400px",
+    view: { lat: 51.505, lng: -0.09, zoom: 13 },
+    tileProvider: "openstreetmap",
+    scaleControl: { position: "bottomleft", metric: true },
+  }).generate();
+  document.getElementById("map-basic").insertAdjacentHTML("afterend", demo1Script);
+
+  // ── Demo 2: Markers ───────────────────────────────────────────────────
+  const demo2Script = new LeafletWidgetGenerator({
+    containerId: "map-markers",
+    height: "400px",
+    // PLACEHOLDER: Adjust coordinates and popup content
+    view: { lat: 51.505, lng: -0.09, zoom: 13 },
+    tileProvider: "openstreetmap",
+    markers: [
+      {
+        lat: 51.505, lng: -0.09,
+        popupHtml: "<b>Central London</b><br>Population: ~1.5M",
+      },
+      {
+        lat: 51.512, lng: -0.102,
+        popupHtml: "<b>Covent Garden</b>",
+      },
+    ],
+  }).generate();
+  document.getElementById("map-markers").insertAdjacentHTML("afterend", demo2Script);
+
+  // ── Demo 3: GeoJSON + scale ──────────────────────────────────────────
+  const demo3Script = new LeafletWidgetGenerator({
+    containerId: "map-geojson",
+    height: "400px",
+    view: { lat: 51.505, lng: -0.09, zoom: 11 },
+    tileProvider: "openstreetmap",
+    scaleControl: { metric: true },
+    geoJsonLayers: [
+      {
+        // PLACEHOLDER: Replace with your GeoJSON endpoint or file path
+        url: "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson",
+        name: "Countries",
+        fillColor: "#27ae60",
+        color: "#1a8a4a",
+        weight: 1,
+      },
+    ],
+  }).generate();
+  document.getElementById("map-geojson").insertAdjacentHTML("afterend", demo3Script);
+</script>
+
+</body>
+</html>

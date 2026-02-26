@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- PLACEHOLDER: Replace with your page title -->
+  <title>Map Swiper — Before / After Demo</title>
+  <!-- MapLibre GL CSS — PLACEHOLDER: pin to a specific version for production -->
+  <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #1a1a2e; color: #eee; }
+    header {
+      padding: 1rem 2rem;
+      background: #16213e;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    header h1 { margin: 0; font-size: 1.3rem; }
+    main { max-width: 1100px; margin: 1.5rem auto; padding: 0 1rem; }
+    p.lead { color: #aaa; margin-bottom: 1rem; font-size: 0.95rem; }
+
+    /* PLACEHOLDER: Adjust swiper container size to suit your layout */
+    #swiper {
+      width: 100%;
+      height: 60vh;
+      min-height: 400px;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,.5);
+    }
+    .controls {
+      display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;
+    }
+    .controls button {
+      padding: 0.6rem 1.2rem;
+      border: none; border-radius: 6px;
+      background: #0f3460; color: #fff;
+      cursor: pointer; font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+    .controls button:hover { background: #533483; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🔀 Map Swiper — Demo</h1>
+</header>
+
+<main>
+  <p class="lead">
+    Drag the centre handle left and right to compare two map styles.
+  </p>
+
+  <!-- PLACEHOLDER: Give this div an explicit width + height in CSS above -->
+  <div id="swiper"></div>
+
+  <div class="controls">
+    <button id="btn-50">Reset to centre</button>
+    <button id="btn-30">Show more right (30/70)</button>
+    <button id="btn-70">Show more left (70/30)</button>
+  </div>
+</main>
+
+<!-- MapLibre GL JS — PLACEHOLDER: pin to same version as your CSS link -->
+<script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+<!-- Built library — run `pnpm build` first -->
+<script type="module">
+  import { MapSwiper } from "../dist/map-swiper.js";
+
+  const swiper = new MapSwiper({
+    containerId: "swiper",
+
+    // PLACEHOLDER: Replace coordinates with your area of interest
+    center: [-0.09, 51.505],
+    zoom: 12,
+
+    // PLACEHOLDER: Replace with your chosen left-panel style URL
+    // Free styles that need no API key:
+    //   https://demotiles.maplibre.org/style.json  (MapLibre demo tiles)
+    //   https://tiles.openfreemap.org/styles/liberty (OpenFreeMap)
+    left: {
+      style: "https://demotiles.maplibre.org/style.json",
+      label: "Before",
+    },
+
+    // PLACEHOLDER: Replace with your chosen right-panel style URL
+    right: {
+      style: "https://demotiles.maplibre.org/style.json",
+      label: "After",
+    },
+
+    initialDividerPosition: 0.5,
+    dividerColor: "#ffffff",
+    dividerWidth: 4,
+    syncMaps: true,
+  });
+
+  swiper.mount();
+
+  // Control buttons
+  document.getElementById("btn-50").addEventListener("click", () => swiper.setDividerPosition(0.5));
+  document.getElementById("btn-30").addEventListener("click", () => swiper.setDividerPosition(0.3));
+  document.getElementById("btn-70").addEventListener("click", () => swiper.setDividerPosition(0.7));
+</script>
+
+</body>
+</html>

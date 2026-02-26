@@ -1,0 +1,44 @@
+{
+  "name": "@geoscripthub/map-swiper",
+  "version": "0.1.0",
+  "description": "A before/after map comparison widget with a draggable divider, built on MapLibre GL JS.",
+  "license": "MIT",
+  "author": "YOUR_NAME <YOUR_EMAIL@example.com>",
+  "keywords": ["gis", "maplibre", "map-swiper", "before-after", "comparison"],
+  "type": "module",
+  "files": ["dist", "src"],
+  "main": "./dist/map-swiper.umd.cjs",
+  "module": "./dist/map-swiper.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/map-swiper.js",
+      "require": "./dist/map-swiper.umd.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "vite build && tsc --emitDeclarationOnly --outDir dist",
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "vite preview"
+  },
+  "peerDependencies": {
+    "maplibre-gl": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/maplibre-gl": "*",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "happy-dom": "^14.0.0",
+    "maplibre-gl": "^4.0.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0",
+    "vite-plugin-dts": "^3.9.0",
+    "vitest": "^1.5.0"
+  }
+}

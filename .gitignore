@@ -1,0 +1,84 @@
+# =============================================================================
+# GeoScriptHub — .gitignore
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+
+# pyproject / pip
+*.pth
+pip-wheel-metadata/
+
+# uv
+.uv/
+uv.lock
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.coveragerc
+
+# ---------------------------------------------------------------------------
+# TypeScript / Node
+# ---------------------------------------------------------------------------
+node_modules/
+
+# Build outputs (committed for releases via CI, not during development)
+tools/typescript/*/dist/
+
+# Package manager lockfiles (keep pnpm-lock.yaml, ignore others)
+package-lock.json
+yarn.lock
+.pnp.cjs
+.pnp.loader.mjs
+
+# ---------------------------------------------------------------------------
+# Environment & secrets
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# ---------------------------------------------------------------------------
+# Editors & OS
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------------------
+# Logs & temp files
+# ---------------------------------------------------------------------------
+*.log
+*.tmp
+*.bak

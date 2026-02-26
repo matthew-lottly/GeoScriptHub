@@ -1,0 +1,47 @@
+{
+  "name": "@geoscripthub/leaflet-widget-generator",
+  "version": "0.1.0",
+  "description": "Generate self-contained Leaflet.js map widgets from a typed configuration object.",
+  "license": "MIT",
+  "author": "YOUR_NAME <YOUR_EMAIL@example.com>",
+  "keywords": ["gis", "leaflet", "map-widget", "geospatial"],
+  "type": "module",
+  "files": ["dist", "src"],
+  "main": "./dist/leaflet-widget-generator.umd.cjs",
+  "module": "./dist/leaflet-widget-generator.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/leaflet-widget-generator.js",
+      "require": "./dist/leaflet-widget-generator.umd.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "vite build && tsc --emitDeclarationOnly --outDir dist",
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.8",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0",
+    "vite-plugin-dts": "^3.9.0",
+    "vitest": "^1.5.0"
+  },
+  "peerDependencies": {
+    "leaflet": "^1.9.0"
+  },
+  "peerDependenciesMeta": {
+    "leaflet": {
+      "optional": true
+    }
+  }
+}

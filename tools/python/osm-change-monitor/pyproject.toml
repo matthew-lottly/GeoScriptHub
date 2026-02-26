@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "osm-change-monitor"
+version = "0.1.0"
+description = "Monitor OSM bounding boxes for feature changes and notify via Slack, email, or JSON."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+# PLACEHOLDER: Replace with your name and email
+authors = [{ name = "YOUR_NAME", email = "YOUR_EMAIL@example.com" }]
+keywords = ["gis", "openstreetmap", "osm", "overpass", "monitoring"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "overpy>=0.7",
+    "requests>=2.31",
+    "schedule>=1.2",
+    "click>=8.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "pytest-mock>=3.12",
+    "responses>=0.25",
+    "ruff>=0.1",
+    "mypy>=1.6",
+]
+
+[project.scripts]
+geo-osm-monitor = "osm_change_monitor.cli:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/osm_change_monitor"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
