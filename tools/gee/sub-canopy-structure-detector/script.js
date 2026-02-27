@@ -237,8 +237,15 @@ var s1Linear = s1.map(dbToLinear);
  * and standard deviation in dB space is not physically meaningful
  * for the coefficient of variation.
  */
-var vvMean   = s1Linear.select('VV').mean();
-var vvStdDev = s1Linear.select('VV').reduce(ee.Reducer.stdDev());
+// Compute VV and VH mean + VV stdDev in a single pass over the collection.
+// Three separate .mean() / .reduce() calls would each iterate the full
+// collection — using a combined reducer reduces that to one pass.
+var s1LinearStats = s1Linear.reduce(
+  ee.Reducer.mean().combine(ee.Reducer.stdDev(), null, true)
+);
+var vvMean   = s1LinearStats.select('VV_mean');
+var vhMean   = s1LinearStats.select('VH_mean');   // also used in Section 5
+var vvStdDev = s1LinearStats.select('VV_stdDev');
 
 // Guard against division by zero in homogeneous areas
 var cov = vvStdDev.divide(vvMean.max(1e-10));
@@ -279,7 +286,7 @@ var stabilityScore = stability
  * The normalisation bounds (POL_RATIO_MIN / POL_RATIO_MAX) are
  * user-configurable for different biomes.
  */
-var vhMean = s1Linear.select('VH').mean();
+// vhMean was already computed in Section 4 via the combined reducer.
 var polRatio = vhMean.divide(vvMean.max(1e-10)).rename('pol_ratio');
 
 var doubleBounceScore = ee.Image(POL_RATIO_MAX).subtract(polRatio)
@@ -346,10 +353,10 @@ var textureScore = contrast
  *
  * Pixels with z > ANOMALY_SIGMA are flagged as anomalous.
  *
- * We use the median VV image in dB.  Although dB is logarithmic,
- * it is appropriate here because we are looking for *relative*
- * local departures, and dB stabilises variance across brightness
- * levels (homoscedasticity).
+ * We use the mean VV image (temporal mean across all S1 acquisitions,
+ * in dB).  Although dB is logarithmic, it is appropriate here because
+ * we are looking for *relative* local departures, and dB stabilises
+ * variance across brightness levels (homoscedasticity).
  */
 var vvMeanDb = s1.select('VV').mean();
 var anomalyKernel = ee.Kernel.circle(ANOMALY_KERNEL_RADIUS, 'pixels');
@@ -649,8 +656,10 @@ var ghslForestCount = ghslInForest.reduceRegion({
  * see "too many pixels" errors.
  */
 
-// Binary mask of every pixel that passed the cleaned detection filter
-var footprintMask = cleanDetections.gte(THRESH_MEDIUM).selfMask();
+// Binary mask of every pixel that survived morphological cleanup.
+// cleanDetections is already restricted to prob >= THRESH_MEDIUM by the
+// opened mask, so all unmasked values satisfy the threshold.
+var footprintMask = cleanDetections.gte(0).selfMask();
 
 // ── Step 1: Vectorise connected blobs ────────────────────────────────────
 var rawFootprints = footprintMask.reduceToVectors({
@@ -664,19 +673,16 @@ var rawFootprints = footprintMask.reduceToVectors({
   tileScale: 4
 });
 
-// ── Step 2: Mean probability per footprint ────────────────────────────────
-// Output property name mirrors the band: 'structure_probability'
-var fpStep2 = hiddenStructureProb.reduceRegions({
-  collection: rawFootprints,
-  reducer: ee.Reducer.mean(),
-  scale: 10,
-  tileScale: 4
-});
+// ── Steps 2–3: Mean and max probability in a single pass ─────────────────
+// Using a combined reducer computes both statistics in one server-side
+// pass over the probability image, rather than two separate reduceRegions
+// calls iterating the same data twice.
+var probReducer = ee.Reducer.mean().setOutputs(['prob_mean'])
+  .combine(ee.Reducer.max().setOutputs(['prob_max']), null, true);
 
-// ── Step 3: Max probability per footprint ─────────────────────────────────
 var fpStep3 = hiddenStructureProb.reduceRegions({
-  collection: fpStep2,
-  reducer: ee.Reducer.max().setOutputs(['prob_max']),
+  collection: rawFootprints,
+  reducer: probReducer,
   scale: 10,
   tileScale: 4
 });
@@ -693,7 +699,7 @@ var fpStep4 = ghsl.reduceRegions({
 var footprintsAll = fpStep4.map(function(feat) {
   var area     = feat.geometry().area(1);              // m², 1 m tolerance
   var centroid = feat.geometry().centroid(1).coordinates();
-  var probMean = ee.Number(feat.get('structure_probability'));
+  var probMean = ee.Number(feat.get('prob_mean'));
   var probMax  = ee.Number(feat.get('prob_max'));
   var ghslMax  = ee.Number(feat.get('ghsl_max'));
 
@@ -743,7 +749,7 @@ Map.setOptions('SATELLITE');
 
 Map.addLayer(
   s2Median.select(['B4', 'B3', 'B2']),
-  { min: 0, max: 2500 },
+  { min: 0, max: 3000 },   // 3000 is a better stretch for tropical forest SR (0–10000 scale)
   'Sentinel-2 True Colour',
   true
 );
@@ -1117,8 +1123,18 @@ var chartFull = ui.Chart.image.series({
 
 print(chartFull);
 
-// Chart B: high-confidence detections only
-var highZone = confidenceZones.eq(3).selfMask();
+// Chart B: high-confidence detections only.
+// Guard: skip the chart if no HIGH-confidence pixels exist to avoid
+// a broken empty chart.  ee.Algorithms.If runs server-side and returns
+// a string message when the zone is empty.
+var highZone      = confidenceZones.eq(3).selfMask();
+var highPixelCount = highZone.reduceRegion({
+  reducer: ee.Reducer.count(),
+  geometry: AOI,
+  scale: 100,
+  bestEffort: true
+}).get('confidence');
+
 var s1HighMasked = s1.select('VV').map(function(img) {
   return img.updateMask(highZone)
     .copyProperties(img, ['system:time_start']);
@@ -1139,7 +1155,14 @@ var chartHigh = ui.Chart.image.series({
   series: { 0: { color: '#d73027' } }
 });
 
-print(chartHigh);
+// Only print Chart B when high-confidence detections actually exist.
+ee.Number(highPixelCount).evaluate(function(n) {
+  if (n && n > 0) {
+    print(chartHigh);
+  } else {
+    print('Chart B: no HIGH-confidence pixels found — skipped.');
+  }
+});
 
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1169,13 +1192,13 @@ print('  Local Anomaly    :', W_ANOMALY);
 print('  Optical NDBI     :', W_OPTICAL);
 print('');
 print('Detection counts:');
-print('  High-confidence pixels  :', highCount);
-print('  Medium-confidence pixels:', medCount);
+print('  High-confidence pixels  :', highCount.get('confidence'));
+print('  Medium-confidence pixels:', medCount.get('confidence'));
 print('');
 print('GHSL Validation:');
-print('  GHSL built-up in forest :', ghslForestCount);
-print('  Confirmed (ours + GHSL) :', agreementCount);
-print('  Novel (ours only)       :', novelCount);
+print('  GHSL built-up in forest :', ghslForestCount.get('ghsl_built_in_forest'));
+print('  Confirmed (ours + GHSL) :', agreementCount.get('agreed'));
+print('  Novel (ours only)       :', novelCount.get('novel'));
 print('');
 print('Building Footprints:');
 print('  Total footprints         :', footprints.size());
