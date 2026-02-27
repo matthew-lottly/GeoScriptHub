@@ -75,6 +75,7 @@ Whether you need to batch-reproject 10,000 coordinates, validate a shapefile bef
 | # | Script | Description | Docs |
 |---|--------|-------------|------|
 | 12 | **NDWI Flood-Frequency Mapper** | Sentinel-2 time series → NDWI → water classification → flood-frequency raster (Mississippi Delta) | [→ README](tools/gee/ndwi-flood-frequency/README.md) |
+| 13 | **Sub-Canopy Structure Detector** | Sentinel-1 SAR + Sentinel-2 optical fusion — five-indicator pipeline to locate buildings hidden beneath forest canopy | [→ README](tools/gee/sub-canopy-structure-detector/README.md) |
 
 ---
 
@@ -108,7 +109,8 @@ GeoScriptHub/
 │       ├── map-swiper/
 │       └── geojson-diff-viewer/
 │   └── gee/
-│       └── ndwi-flood-frequency/
+│       ├── ndwi-flood-frequency/
+│       └── sub-canopy-structure-detector/
 │
 ├── .gitignore
 ├── LICENSE
