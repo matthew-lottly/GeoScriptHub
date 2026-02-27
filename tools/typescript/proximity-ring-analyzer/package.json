@@ -1,0 +1,12 @@
+{
+  "name": "proximity-ring-analyzer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ArcGIS Experience Builder custom widget — drop a pin on the map, draw concentric buffer rings, and discover nearby features across all layers.",
+  "author": "matthew-lottly",
+  "license": "MIT",
+  "keywords": ["arcgis", "experience-builder", "proximity", "buffer", "widget"],
+  "devDependencies": {
+    "@types/react": "^18.3.28"
+  }
+}

@@ -1,0 +1,31 @@
+/* Proximity Ring Analyzer — widget styles */
+
+.proximity-ring-analyzer {
+  overflow: auto;
+  height: 100%;
+}
+
+.proximity-ring-analyzer .controls-row {
+  gap: 8px;
+}
+
+.proximity-ring-analyzer .center-label {
+  font-size: 0.85rem;
+}
+
+.proximity-ring-analyzer .ring-header {
+  cursor: pointer;
+}
+
+.proximity-ring-analyzer .empty-ring-msg {
+  font-size: 0.85rem;
+}
+
+.proximity-ring-analyzer .layer-header {
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.proximity-ring-analyzer .feature-list {
+  font-size: 0.8rem;
+}

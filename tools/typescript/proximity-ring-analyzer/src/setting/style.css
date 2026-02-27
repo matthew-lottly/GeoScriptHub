@@ -1,0 +1,17 @@
+/* Proximity Ring Analyzer — settings panel styles */
+
+.proximity-ring-settings .setting-row {
+  gap: 6px;
+}
+
+.proximity-ring-settings .distance-label {
+  min-width: 50px;
+}
+
+.proximity-ring-settings .color-picker {
+  width: 30px;
+  height: 24px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}

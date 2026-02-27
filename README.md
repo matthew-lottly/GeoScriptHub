@@ -63,9 +63,10 @@ Whether you need to batch-reproject 10,000 coordinates, validate a shapefile bef
 
 | # | Widget | Description | Docs |
 |---|--------|-------------|------|
-| 8 | **Leaflet Widget Generator** | Paste GeoJSON → get a self-contained embeddable Leaflet HTML snippet | [→ README](tools/typescript/leaflet-widget-generator/README.md) |
-| 9 | **Map Swiper** | Before/after swipe comparison of two map layers (MapLibre GL JS) | [→ README](tools/typescript/map-swiper/README.md) |
-| 10 | **GeoJSON Diff Viewer** | Visual "git diff" for two GeoJSON files — added/removed/changed features | [→ README](tools/typescript/geojson-diff-viewer/README.md) |
+| 8 | **Proximity Ring Analyzer** | ExB widget — click the map, draw buffer rings, query nearby features per layer | [→ README](tools/typescript/proximity-ring-analyzer/README.md) |
+| 9 | **Leaflet Widget Generator** | Paste GeoJSON → get a self-contained embeddable Leaflet HTML snippet | [→ README](tools/typescript/leaflet-widget-generator/README.md) |
+| 10 | **Map Swiper** | Before/after swipe comparison of two map layers (MapLibre GL JS) | [→ README](tools/typescript/map-swiper/README.md) |
+| 11 | **GeoJSON Diff Viewer** | Visual "git diff" for two GeoJSON files — added/removed/changed features | [→ README](tools/typescript/geojson-diff-viewer/README.md) |
 
 ---
 
@@ -94,6 +95,7 @@ GeoScriptHub/
 │   │   ├── osm-change-monitor/
 │   │   └── fgdb-archive-publisher/
 │   └── typescript/
+│       ├── proximity-ring-analyzer/
 │       ├── leaflet-widget-generator/
 │       ├── map-swiper/
 │       └── geojson-diff-viewer/
