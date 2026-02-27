@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)
 ![rasterio](https://img.shields.io/badge/rasterio-1.3%2B-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
-[![GeoScriptHub](https://img.shields.io/badge/GeoScriptHub-Tool%205%2F10-purple)](../../README.md)
+[![GeoScriptHub](https://img.shields.io/badge/GeoScriptHub-Tool%205%2F10-purple)](../../../README.md)
 
 ---
 

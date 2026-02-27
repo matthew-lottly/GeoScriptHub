@@ -7,8 +7,8 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?logo=leaflet&logoColor=white)](https://leafletjs.com/)
 [![Vite](https://img.shields.io/badge/Vite-5.x-646cff?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
-[![GeoScriptHub](https://img.shields.io/badge/GeoScriptHub-Portfolio-00d9ff)](../../README.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../../LICENSE)
+[![GeoScriptHub](https://img.shields.io/badge/GeoScriptHub-Portfolio-00d9ff)](../../../README.md)
 
 ---
 
@@ -241,16 +241,16 @@ to a feature in *after*.
 
 ## Contributing
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for branch naming, commit rules,
+See [CONTRIBUTING.md](../../../CONTRIBUTING.md) for branch naming, commit rules,
 and PR guidelines.
 
 ---
 
 ## License
 
-MIT — see [LICENSE](../../LICENSE).
+MIT — see [LICENSE](../../../LICENSE).
 
 ---
 
-*Part of the [GeoScriptHub](../../README.md) portfolio — a curated collection of
+*Part of the [GeoScriptHub](../../../README.md) portfolio — a curated collection of
 production-ready GIS tools and widgets.*

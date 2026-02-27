@@ -1,12 +1,9 @@
 # Batch Geocoder
 
-[![CI — Python](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml/badge.svg)](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../../../LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../../LICENSE)
 
 > Convert a CSV of addresses to a **GeoJSON FeatureCollection** — free with Nominatim, or fast with Google Maps.
-
-<!-- ![Demo](../../../../docs/assets/demo-batch-geocoder.gif) -->
 
 ---
 
@@ -191,10 +188,10 @@ pytest tests/ -v
 
 ## Contributing
 
-See root [CONTRIBUTING.md](../../../../CONTRIBUTING.md).
+See root [CONTRIBUTING.md](../../../CONTRIBUTING.md).
 
 ---
 
 ## License
 
-MIT — see [LICENSE](../../../../LICENSE).
+MIT — see [LICENSE](../../../LICENSE).

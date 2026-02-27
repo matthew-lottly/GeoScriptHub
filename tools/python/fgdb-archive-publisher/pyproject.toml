@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "geoscripthub-fgdb-archive-publisher"
+version = "1.0.0"
+description = "Archive ArcGIS portal data to FGDB, clean schemas, validate topology, and republish"
+readme = "README.md"
+license = { file = "../../LICENSE" }
+requires-python = ">=3.11"
+
+authors = [{ name = "matthew-lottly" }]
+
+keywords = ["gis", "arcpy", "fgdb", "geodatabase", "portal", "topology", "arcgis"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+
+dependencies = [
+    "click>=8.1",
+    "arcgis>=2.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+    "mypy>=1.8",
+]
+
+[project.scripts]
+geo-archive = "src.fgdb_archive_publisher.cli:main"
+
+[project.urls]
+"Homepage" = "https://github.com/matthew-lottly/GeoScriptHub"
+"Source" = "https://github.com/matthew-lottly/GeoScriptHub/tree/main/tools/python/fgdb-archive-publisher"
+"Bug Tracker" = "https://github.com/matthew-lottly/GeoScriptHub/issues"
+
+[tool.ruff]
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "PIE", "PLC"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"

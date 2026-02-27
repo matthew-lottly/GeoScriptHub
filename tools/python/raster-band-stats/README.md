@@ -1,12 +1,9 @@
 # Raster Band Stats Reporter
 
-[![CI — Python](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml/badge.svg)](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../../../LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../../LICENSE)
 
 > Compute **per-band statistics** (min, max, mean, std dev) for any GeoTIFF in one command — export to JSON or CSV.
-
-<!-- ![Demo](../../../../docs/assets/demo-raster-band-stats.gif) -->
 
 ---
 
@@ -182,10 +179,10 @@ pytest tests/ -v
 
 ## Contributing
 
-See root [CONTRIBUTING.md](../../../../CONTRIBUTING.md).
+See root [CONTRIBUTING.md](../../../CONTRIBUTING.md).
 
 ---
 
 ## License
 
-MIT — see [LICENSE](../../../../LICENSE).
+MIT — see [LICENSE](../../../LICENSE).

@@ -1,13 +1,9 @@
 # Batch Coordinate Transformer
 
-[![CI — Python](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml/badge.svg)](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../../../LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../../LICENSE)
 
 > Reproject coordinate pairs in a CSV file from **any source CRS** to **any target CRS** — in one command.
-
-
-<!-- ![Demo](../../../../docs/assets/demo-batch-coord-transformer.gif) -->
 
 ---
 
@@ -228,10 +224,10 @@ pytest tests/ -v
 
 ## Contributing
 
-See the root [CONTRIBUTING.md](../../../../CONTRIBUTING.md).
+See the root [CONTRIBUTING.md](../../../CONTRIBUTING.md).
 
 ---
 
 ## License
 
-MIT — see [LICENSE](../../../../LICENSE).
+MIT — see [LICENSE](../../../LICENSE).

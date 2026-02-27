@@ -5,7 +5,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript&logoColor=white)
 ![MapLibre GL](https://img.shields.io/badge/MapLibre%20GL-4%2B-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
-[![GeoScriptHub](https://img.shields.io/badge/GeoScriptHub-Widget%208%2F10-purple)](../../README.md)
+[![GeoScriptHub](https://img.shields.io/badge/GeoScriptHub-Widget%209%2F10-purple)](../../../README.md)
 
 ---
 

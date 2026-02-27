@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)
 ![overpy](https://img.shields.io/badge/overpy-0.7%2B-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
-[![GeoScriptHub](https://img.shields.io/badge/GeoScriptHub-Tool%206%2F10-purple)](../../README.md)
+[![GeoScriptHub](https://img.shields.io/badge/GeoScriptHub-Tool%206%2F10-purple)](../../../README.md)
 
 ---
 

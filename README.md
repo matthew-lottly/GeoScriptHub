@@ -1,14 +1,9 @@
 <div align="center">
 
-
-<img src="docs/assets/banner.png" alt="GeoScriptHub Banner" width="900"/>
-
 # GeoScriptHub
 
 **A collection of open-source GIS tools built for analysts, developers, and the community.**
 
-[![CI — Python](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml/badge.svg)](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml)
-[![CI — TypeScript](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-typescript.yml/badge.svg)](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-typescript.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -62,14 +57,15 @@ Whether you need to batch-reproject 10,000 coordinates, validate a shapefile bef
 | 4 | **Raster Band Stats Reporter** | Per-band statistics (min/max/mean/std dev) for any GeoTIFF | [→ README](tools/python/raster-band-stats/README.md) |
 | 5 | **Spectral Index Calculator** | Compute NDVI, NDWI, EVI, SAVI from Landsat 8/9 or Sentinel-2 bands | [→ README](tools/python/spectral-index-calculator/README.md) |
 | 6 | **OSM Change Monitor** | Poll OpenStreetMap Overpass API for changes within a bounding box | [→ README](tools/python/osm-change-monitor/README.md) |
+| 7 | **FGDB Archive Publisher** | Backup portal data to FGDB, clean schemas, validate topology, and republish (arcpy) | [→ README](tools/python/fgdb-archive-publisher/README.md) |
 
 ### TypeScript Web Widgets
 
 | # | Widget | Description | Docs |
 |---|--------|-------------|------|
-| 7 | **Leaflet Widget Generator** | Paste GeoJSON → get a self-contained embeddable Leaflet HTML snippet | [→ README](tools/typescript/leaflet-widget-generator/README.md) |
-| 8 | **Map Swiper** | Before/after swipe comparison of two map layers (MapLibre GL JS) | [→ README](tools/typescript/map-swiper/README.md) |
-| 9 | **GeoJSON Diff Viewer** | Visual "git diff" for two GeoJSON files — added/removed/changed features | [→ README](tools/typescript/geojson-diff-viewer/README.md) |
+| 8 | **Leaflet Widget Generator** | Paste GeoJSON → get a self-contained embeddable Leaflet HTML snippet | [→ README](tools/typescript/leaflet-widget-generator/README.md) |
+| 9 | **Map Swiper** | Before/after swipe comparison of two map layers (MapLibre GL JS) | [→ README](tools/typescript/map-swiper/README.md) |
+| 10 | **GeoJSON Diff Viewer** | Visual "git diff" for two GeoJSON files — added/removed/changed features | [→ README](tools/typescript/geojson-diff-viewer/README.md) |
 
 ---
 
@@ -78,9 +74,6 @@ Whether you need to batch-reproject 10,000 coordinates, validate a shapefile bef
 ```
 GeoScriptHub/
 ├── .github/
-│   ├── workflows/
-│   │   ├── ci-python.yml        # Lint, type-check & test Python tools
-│   │   └── ci-typescript.yml    # Build & lint TypeScript widgets
 │   └── ISSUE_TEMPLATE/
 │       └── bug_report.md
 │
@@ -98,14 +91,12 @@ GeoScriptHub/
 │   │   ├── batch-geocoder/
 │   │   ├── raster-band-stats/
 │   │   ├── spectral-index-calculator/
-│   │   └── osm-change-monitor/
+│   │   ├── osm-change-monitor/
+│   │   └── fgdb-archive-publisher/
 │   └── typescript/
 │       ├── leaflet-widget-generator/
 │       ├── map-swiper/
 │       └── geojson-diff-viewer/
-│
-├── docs/
-│   └── assets/                  # Banner, screenshots, demo GIFs
 │
 ├── .gitignore
 ├── LICENSE
@@ -198,8 +189,6 @@ Each tool README includes a configuration reference table. Common values you may
 
 | Setting | Where it appears | Notes |
 |---------|-----------------|-------|
-| `docs/assets/banner.png` | `<img>` tag at the top of this file | Replace with your real banner image |
-| `docs/assets/demo-*.gif` | Each tool's README demo GIF | Screen-recorded GIF of the tool running |
 | EPSG codes | Tool READMEs, code examples | Use the EPSG code for your data's CRS |
 | Slack webhook URL | OSM Change Monitor | Your Slack incoming webhook URL |
 | Google API key | Batch Geocoder | Your Google Maps Geocoding API key |
