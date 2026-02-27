@@ -19,10 +19,12 @@
 - [Tool Index](#tool-index)
   - [Python CLI Tools](#python-cli-tools)
   - [TypeScript Web Widgets](#typescript-web-widgets)
+  - [Google Earth Engine Scripts](#google-earth-engine-scripts)
 - [Repository Structure](#repository-structure)
 - [Getting Started](#getting-started)
   - [Python Tools — Quick Setup](#python-tools--quick-setup)
   - [TypeScript Widgets — Quick Setup](#typescript-widgets--quick-setup)
+  - [GEE Scripts — Quick Start](#gee-scripts--quick-start)
 - [Shared Python Foundation](#shared-python-foundation)
 - [Contributing](#contributing)
 - [Customization Guide](#customization-guide)
@@ -68,6 +70,12 @@ Whether you need to batch-reproject 10,000 coordinates, validate a shapefile bef
 | 10 | **Map Swiper** | Before/after swipe comparison of two map layers (MapLibre GL JS) | [→ README](tools/typescript/map-swiper/README.md) |
 | 11 | **GeoJSON Diff Viewer** | Visual "git diff" for two GeoJSON files — added/removed/changed features | [→ README](tools/typescript/geojson-diff-viewer/README.md) |
 
+### Google Earth Engine Scripts
+
+| # | Script | Description | Docs |
+|---|--------|-------------|------|
+| 12 | **NDWI Flood-Frequency Mapper** | Sentinel-2 time series → NDWI → water classification → flood-frequency raster (Mississippi Delta) | [→ README](tools/gee/ndwi-flood-frequency/README.md) |
+
 ---
 
 ## Repository Structure
@@ -99,6 +107,8 @@ GeoScriptHub/
 │       ├── leaflet-widget-generator/
 │       ├── map-swiper/
 │       └── geojson-diff-viewer/
+│   └── gee/
+│       └── ndwi-flood-frequency/
 │
 ├── .gitignore
 ├── LICENSE
@@ -148,6 +158,15 @@ pnpm dev
 # Build for production (outputs to dist/)
 pnpm build
 ```
+
+### GEE Scripts — Quick Start
+
+Google Earth Engine scripts run in the browser — no local install needed.
+
+1. Open the [GEE Code Editor](https://code.earthengine.google.com/).
+2. Create a new script and paste the contents from the `tools/gee/` folder.
+3. Adjust the user parameters at the top of the file.
+4. Click **Run**.
 
 ---
 

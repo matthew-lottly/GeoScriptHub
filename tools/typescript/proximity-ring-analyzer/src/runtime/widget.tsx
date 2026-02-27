@@ -366,7 +366,7 @@ export default class ProximityRingAnalyzer extends React.PureComponent<
         <h5 className='mb-3'>Proximity Ring Analyzer</h5>
 
         {/* Map view binding */}
-        {useMapWidgetIds?.length > 0 && (
+        {useMapWidgetIds && useMapWidgetIds.length > 0 && (
           <JimuMapViewComponent
             useMapWidgetId={useMapWidgetIds[0]}
             onActiveViewChange={this.onActiveViewChange}
