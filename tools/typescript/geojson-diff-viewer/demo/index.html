@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GeoJSON Diff Viewer — Demo | GeoScriptHub</title>
 
-  <!-- Leaflet CSS (CDN) -->
-  <!-- PLACEHOLDER: Pin to a specific version, e.g. leaflet@1.9.4 -->
+  <!-- Leaflet CSS (CDN, pinned to v1.9.4) -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -16,7 +15,6 @@
   <style>
     /* -----------------------------------------------------------------------
        Page Layout
-       PLACEHOLDER: Replace with your own brand colours / fonts.
     ----------------------------------------------------------------------- */
     :root {
       --brand-dark:  #1a1a2e;
@@ -127,7 +125,6 @@
       border: 1px solid #2a4a6a;
     }
 
-    /* PLACEHOLDER: Set this to the desired map height. */
     #diff-map { height: 500px; width: 100%; }
   </style>
 </head>
@@ -163,23 +160,19 @@
 
   <!-- Map -->
   <div class="map-wrapper">
-    <!-- PLACEHOLDER: Change the id to match your DiffViewerConfig.containerId -->
     <div id="diff-map"></div>
   </div>
 </main>
 
 <!-- Leaflet JS (CDN) -->
-<!-- PLACEHOLDER: Keep in sync with the leaflet CSS version above. -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
-<!-- Widget JS (built bundle) -->
-<!-- PLACEHOLDER: Run `pnpm build` first; path below points to the UMD bundle. -->
+<!-- Widget JS (run `pnpm build` first) -->
 <script src="../dist/geojson-diff-viewer.umd.cjs"></script>
 
 <script>
   // -------------------------------------------------------------------------
   // Sample data
-  // PLACEHOLDER: Replace with GeoJSON relevant to your own project.
   // -------------------------------------------------------------------------
   const BEFORE_SAMPLE = JSON.stringify({
     type: "FeatureCollection",
@@ -244,17 +237,14 @@
 
   // -------------------------------------------------------------------------
   // Initialise viewer
-  // PLACEHOLDER: Adjust tileUrl / containerId to match your setup.
   // -------------------------------------------------------------------------
   const viewer = new GeoJsonDiffViewer.GeoJsonDiffViewer({
     containerId: "diff-map",
     height: "500px",
-    // PLACEHOLDER: Replace with your preferred tile provider URL.
     tileUrl: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     tileAttribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     showLegend: true,
     diffOptions: {
-      // PLACEHOLDER: Set to the unique property key in your data, or null.
       matchBy: null
     }
   });

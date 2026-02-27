@@ -78,18 +78,12 @@ class BandFileMap(TypedDict, total=False):
     which bands it needs.
 
     Keys:
-        blue: Blue band file.
-               <!-- PLACEHOLDER: Landsat 8/9 → B2.TIF, Sentinel-2 → B02.tif -->
-        green: Green band file.
-               <!-- PLACEHOLDER: Landsat 8/9 → B3.TIF, Sentinel-2 → B03.tif -->
-        red: Red band file.
-             <!-- PLACEHOLDER: Landsat 8/9 → B4.TIF, Sentinel-2 → B04.tif -->
-        nir: Near-infrared band file.
-             <!-- PLACEHOLDER: Landsat 8/9 → B5.TIF, Sentinel-2 → B08.tif -->
-        swir1: Shortwave infrared 1 band file.
-               <!-- PLACEHOLDER: Landsat 8/9 → B6.TIF, Sentinel-2 → B11.tif -->
-        swir2: Shortwave infrared 2 band file.
-               <!-- PLACEHOLDER: Landsat 8/9 → B7.TIF, Sentinel-2 → B12.tif -->
+        blue: Blue band file (Landsat 8/9: B2, Sentinel-2: B02).
+        green: Green band file (Landsat 8/9: B3, Sentinel-2: B03).
+        red: Red band file (Landsat 8/9: B4, Sentinel-2: B04).
+        nir: Near-infrared band file (Landsat 8/9: B5, Sentinel-2: B08).
+        swir1: Shortwave infrared 1 (Landsat 8/9: B6, Sentinel-2: B11).
+        swir2: Shortwave infrared 2 (Landsat 8/9: B7, Sentinel-2: B12).
     """
 
     blue: Path
@@ -234,13 +228,11 @@ class SAVIStrategy(IndexStrategy):
     Required bands: ``red``, ``nir``
 
     Args:
-        soil_factor: The ``L`` correction factor.
-                     <!-- PLACEHOLDER: set to 0.5 for intermediate cover,
-                          0.25 for dense vegetation, 1.0 for very sparse cover -->
+        soil_factor: The ``L`` correction factor (0.5 for intermediate
+                     cover, 0.25 for dense, 1.0 for very sparse).
     """
 
     def __init__(self, soil_factor: float = 0.5) -> None:
-        # PLACEHOLDER: adjust L based on your study area's vegetation density
         self.soil_factor = soil_factor
 
     @property
@@ -326,19 +318,9 @@ class SpectralIndexCalculator(GeoTool):
     ``output_dir``, named ``<INDEX_NAME>.tif`` (e.g. ``NDVI.tif``).
 
     Args:
-        band_files: A :class:`BandFileMap` dict.
-                    <!-- PLACEHOLDER: provide Path objects for each band needed
-                         by your selected strategies, e.g.:
-                         BandFileMap(
-                             red=Path("LC08_B4.TIF"),   # Landsat 8 Red
-                             nir=Path("LC08_B5.TIF"),   # Landsat 8 NIR
-                         ) -->
+        band_files: A :class:`BandFileMap` dict mapping band names to file paths.
         output_dir: Directory where output GeoTIFFs will be written.
-                    <!-- PLACEHOLDER: e.g. Path("output/indices") -->
         strategies: List of :class:`IndexStrategy` instances to run.
-                    <!-- PLACEHOLDER: pick from NDVIStrategy, NDWIStrategy,
-                         SAVIStrategy, EVIStrategy — or pass them all:
-                         strategies=ALL_STRATEGIES -->
         verbose: Enable DEBUG-level logging.
 
     Note:

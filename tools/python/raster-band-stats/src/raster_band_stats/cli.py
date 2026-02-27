@@ -27,21 +27,13 @@ from shared.python.exceptions import GeoScriptHubError
     "--input", "-i", "input_path",
     required=True,
     type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
-    help=(
-        "Path to the input raster file (GeoTIFF, .img, etc.).\n"
-        # PLACEHOLDER: replace with your raster file path
-        "Example: --input data/landsat_scene.tif"
-    ),
+    help="Path to the input raster file (GeoTIFF, .img, etc.).",
 )
 @click.option(
     "--output", "-o", "output_path",
     required=True,
     type=click.Path(file_okay=True, dir_okay=False, path_type=Path),
-    help=(
-        "Path for the output stats file.\n"
-        # PLACEHOLDER: replace with your desired output path
-        "Example: --output output/band_stats.json"
-    ),
+    help="Path for the output stats file.",
 )
 @click.option(
     "--format",
@@ -49,20 +41,13 @@ from shared.python.exceptions import GeoScriptHubError
     type=click.Choice(["json", "csv"], case_sensitive=False),
     default="json",
     show_default=True,
-    help=(
-        "Output file format.\n"
-        # PLACEHOLDER: choose 'json' for machine-readable or 'csv' for spreadsheet use
-    ),
+    help="Output file format.",
 )
 @click.option(
     "--bands",
     default="",
-    help=(
-        "Comma-separated list of 1-based band indices to process.  "
-        "Omit to process all bands.\n"
-        # PLACEHOLDER: specify bands like --bands 1,4 to process only bands 1 and 4
-        "Example: --bands 1,3,4   (processes bands 1, 3, and 4 only)"
-    ),
+    help="Comma-separated list of 1-based band indices to process. "
+         "Omit to process all bands.",
 )
 @click.option("--verbose", "-v", is_flag=True, default=False, help="Enable debug logging.")
 def main(

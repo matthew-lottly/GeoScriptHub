@@ -228,7 +228,7 @@ export class GeoJsonDiffViewer {
           weight,
           fillOpacity,
         }),
-        pointToLayer: (_feature, latlng) =>
+        pointToLayer: (_feature: GeoJSON.Feature, latlng: L.LatLng) =>
           L.circleMarker(latlng, {
             radius: 7,
             color,
@@ -244,7 +244,9 @@ export class GeoJsonDiffViewer {
     const removedLayer = makeLayer(result.removed, removedColor);
 
     [unchangedLayer, removedLayer, addedLayer].forEach((l) => {
-      l.addTo(this.map!);
+      if (this.map) {
+        l.addTo(this.map);
+      }
       this.layers.push(l);
     });
 
@@ -261,10 +263,15 @@ export class GeoJsonDiffViewer {
 
     if (allBounds.length > 0) {
       let combined = allBounds[0];
-      for (let i = 1; i < allBounds.length; i++) {
-        combined = combined.extend(allBounds[i]);
+      if (combined) {
+        for (let i = 1; i < allBounds.length; i++) {
+          const next = allBounds[i];
+          if (next) {
+            combined = combined.extend(next);
+          }
+        }
+        this.map.fitBounds(combined, { padding: [20, 20] });
       }
-      this.map.fitBounds(combined, { padding: [20, 20] });
     }
 
     // Add legend

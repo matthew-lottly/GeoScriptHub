@@ -130,8 +130,8 @@ export class MapSwiper {
   private _onMouseUp: () => void;
 
   /**
-   * @param config - Swiper configuration.  See {@link MapSwiperConfig} for
-   *   placeholder descriptions.
+   * @param config - Swiper configuration. See {@link MapSwiperConfig} for
+   *   available options.
    */
   constructor(config: MapSwiperConfig) {
     this.config = {
@@ -164,8 +164,7 @@ export class MapSwiper {
     const containerEl = document.getElementById(id);
     if (!containerEl) {
       throw new Error(
-        `MapSwiper: container element #${id} not found. ` +
-          "<!-- PLACEHOLDER: ensure the id matches an element in your HTML -->",
+        `MapSwiper: container element #${id} not found.`,
       );
     }
 
@@ -196,7 +195,7 @@ export class MapSwiper {
       style: left.style as maplibregl.StyleSpecification | string,
       center: this.config.center,
       zoom: this.config.zoom,
-      attributionControl: true,
+      attributionControl: {},
     });
 
     this.rightMap = new maplibregl.Map({
@@ -374,7 +373,7 @@ export class MapSwiper {
   private _validate(): void {
     if (!this.config.containerId) {
       throw new Error(
-        "containerId is required. <!-- PLACEHOLDER: set containerId in MapSwiperConfig -->",
+        "containerId is required.",
       );
     }
     const [lng, lat] = this.config.center;

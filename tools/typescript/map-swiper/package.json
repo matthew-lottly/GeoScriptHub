@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "A before/after map comparison widget with a draggable divider, built on MapLibre GL JS.",
   "license": "MIT",
-  "author": "YOUR_NAME <YOUR_EMAIL@example.com>",
+  "author": "matthew-lottly",
   "keywords": ["gis", "maplibre", "map-swiper", "before-after", "comparison"],
   "type": "module",
   "files": ["dist", "src"],

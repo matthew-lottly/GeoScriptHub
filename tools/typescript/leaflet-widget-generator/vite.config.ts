@@ -6,7 +6,6 @@ export default defineConfig({
     lib: {
       entry: "src/index.ts",
       name: "LeafletWidgetGenerator",
-      // PLACEHOLDER: adjust the output filename prefix if you rename this package
       fileName: "leaflet-widget-generator",
       formats: ["es", "umd"],
     },

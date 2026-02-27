@@ -68,13 +68,9 @@ class BoundingBox:
 
     Args:
         south: Southern latitude boundary.
-               <!-- PLACEHOLDER: Replace with your area's south latitude, e.g. 51.47 -->
         west:  Western longitude boundary.
-               <!-- PLACEHOLDER: Replace with your area's west longitude, e.g. -0.15 -->
         north: Northern latitude boundary.
-               <!-- PLACEHOLDER: Replace with your area's north latitude, e.g. 51.52 -->
         east:  Eastern longitude boundary.
-               <!-- PLACEHOLDER: Replace with your area's east longitude, e.g. -0.08 -->
     """
 
     south: float
@@ -211,12 +207,9 @@ class JsonFileNotifier(NotifierBackend):
 
     Args:
         output_file: Path to the JSONL output file.
-                     <!-- PLACEHOLDER: Set to your desired log path,
-                          e.g. Path("logs/osm_changes.jsonl") -->
     """
 
     def __init__(self, output_file: Path) -> None:
-        # PLACEHOLDER: change this path to your preferred output location
         self.output_file = Path(output_file)
 
     def send(self, change_set: ChangeSet) -> None:
@@ -242,12 +235,7 @@ class SlackNotifier(NotifierBackend):
 
     Args:
         webhook_url: Slack Incoming Webhook URL.
-                     <!-- PLACEHOLDER: Create a webhook at
-                          https://api.slack.com/messaging/webhooks and paste
-                          the URL here, e.g.
-                          "https://hooks.slack.com/services/T00/B00/XXXXXX" -->
         min_changes: Minimum number of changed features before posting (default 1).
-                     <!-- PLACEHOLDER: Set higher to reduce noise, e.g. 5 -->
     """
 
     def __init__(
@@ -255,7 +243,6 @@ class SlackNotifier(NotifierBackend):
         webhook_url: str,
         min_changes: int = 1,
     ) -> None:
-        # PLACEHOLDER: replace with your actual Slack Incoming Webhook URL
         self.webhook_url = webhook_url
         self.min_changes = min_changes
 
@@ -298,18 +285,12 @@ class EmailNotifier(NotifierBackend):
     """Send a change summary via SMTP email.
 
     Args:
-        smtp_host: SMTP server hostname.
-                   <!-- PLACEHOLDER: e.g. "smtp.gmail.com" -->
+        smtp_host: SMTP server hostname (e.g. ``"smtp.gmail.com"``).
         smtp_port: SMTP server port (commonly 587 for STARTTLS).
-                   <!-- PLACEHOLDER: 587 for STARTTLS, 465 for SSL, 25 for plain -->
         sender: Sender email address.
-                <!-- PLACEHOLDER: e.g. "monitor@example.com" -->
         recipients: List of recipient email addresses.
-                    <!-- PLACEHOLDER: e.g. ["team@example.com", "gis@example.com"] -->
         username: SMTP login username (often same as sender).
-                  <!-- PLACEHOLDER: your SMTP account username -->
         password: SMTP login password or app password.
-                  <!-- PLACEHOLDER: use an env var — os.environ["SMTP_PASSWORD"] -->
     """
 
     def __init__(
@@ -321,7 +302,6 @@ class EmailNotifier(NotifierBackend):
         username: str,
         password: str,
     ) -> None:
-        # PLACEHOLDER: configure all SMTP settings for your email provider
         self.smtp_host = smtp_host
         self.smtp_port = smtp_port
         self.sender = sender
@@ -383,15 +363,11 @@ class OverpassClient:
     """Thin wrapper around :mod:`overpy` with configurable retry logic.
 
     Args:
-        api_url: Overpass API endpoint.
-                 <!-- PLACEHOLDER: defaults to the main public instance;
-                      change to a private instance if rate limits are a concern,
-                      e.g. "https://overpass.kumi.systems/api/interpreter" -->
+        api_url: Overpass API endpoint URL.
         max_retries: Number of retry attempts on transient errors.
         retry_delay: Seconds to wait between retries.
     """
 
-    # PLACEHOLDER: swap to a private Overpass instance if the public one is too slow
     DEFAULT_API_URL = "https://overpass-api.de/api/interpreter"
 
     def __init__(
@@ -409,8 +385,6 @@ class OverpassClient:
 
         Args:
             osm_tag: Tag as ``"key=value"``, e.g. ``"amenity=hospital"``.
-                     <!-- PLACEHOLDER: Any valid OSM tag, e.g.
-                          "amenity=cafe", "shop=supermarket", "highway=traffic_signals" -->
             bbox: Geographic bounding box.
 
         Returns:
@@ -505,25 +479,13 @@ class OSMChangeMonitor(GeoTool):
 
     Args:
         bbox: Geographic bounding box.
-              <!-- PLACEHOLDER: Replace all four coordinates with your area
-                   of interest, e.g. BoundingBox(51.47, -0.15, 51.52, -0.08)
-                   for central London -->
-        osm_tag: ``"key=value"`` tag to watch.
-                 <!-- PLACEHOLDER: Any valid OSM tag, examples:
-                      "amenity=hospital", "shop=supermarket",
-                      "leisure=park", "highway=traffic_signals" -->
+        osm_tag: ``"key=value"`` tag to watch (e.g. ``"amenity=hospital"``).
         output_dir: Directory for snapshot JSON and change logs.
-                    <!-- PLACEHOLDER: Set to a persistent directory,
-                         e.g. Path("data/osm-monitor") — this dir must
-                         survive between runs for the diff to work -->
         notifiers: List of :class:`NotifierBackend` instances to invoke
                    when changes are detected.  Defaults to a
                    :class:`JsonFileNotifier` writing to ``output_dir/changes.jsonl``.
-                   <!-- PLACEHOLDER: Configure Slack/email/file as needed -->
         overpass_client: Optional pre-configured :class:`OverpassClient`.
                          Defaults to a new client using the public API.
-                         <!-- PLACEHOLDER: Pass a custom client if you need a
-                              private Overpass instance or custom retry settings -->
         verbose: Enable DEBUG-level logging.
     """
 
@@ -545,7 +507,6 @@ class OSMChangeMonitor(GeoTool):
         self.output_dir = Path(output_dir)
         self.overpass_client = overpass_client or OverpassClient()
         self.notifiers: list[NotifierBackend] = notifiers or [
-            # PLACEHOLDER: replace with your preferred notifier(s)
             JsonFileNotifier(self.output_dir / "changes.jsonl"),
         ]
         self._last_change_set: ChangeSet | None = None

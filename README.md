@@ -1,25 +1,14 @@
 <div align="center">
 
-<!-- PLACEHOLDER ─────────────────────────────────────────────────────────────
-     Replace the img src below with a real banner image.
-     Recommended size: 900 × 200 px.  Upload it to the /docs/assets/ folder
-     in this repository and update the path, e.g.:
-       src="docs/assets/banner.png"
-     Or use an external hosted image URL.
-─────────────────────────────────────────────────────────────────────────── -->
+
 <img src="docs/assets/banner.png" alt="GeoScriptHub Banner" width="900"/>
 
 # GeoScriptHub
 
 **A collection of open-source GIS tools built for analysts, developers, and the community.**
 
-<!-- PLACEHOLDER ─────────────────────────────────────────────────────────────
-     Replace YOUR_GITHUB_USERNAME with your actual GitHub username in every
-     badge URL below.  The repo name "GeoScriptHub" should stay the same
-     unless you rename the repository.
-─────────────────────────────────────────────────────────────────────────── -->
-[![CI — Python](https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/actions/workflows/ci-python.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/actions/workflows/ci-python.yml)
-[![CI — TypeScript](https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/actions/workflows/ci-typescript.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/actions/workflows/ci-typescript.yml)
+[![CI — Python](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml/badge.svg)](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml)
+[![CI — TypeScript](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-typescript.yml/badge.svg)](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-typescript.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -133,8 +122,7 @@ Each Python tool is self-contained with its own `pyproject.toml`.  Install and r
 
 ```bash
 # 1. Clone the repository
-# PLACEHOLDER: replace YOUR_GITHUB_USERNAME with your GitHub username
-git clone https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub.git
+git clone https://github.com/matthew-lottly/GeoScriptHub.git
 cd GeoScriptHub
 
 # 2. Create a virtual environment (Python 3.11+ required)
@@ -206,18 +194,15 @@ Contributions are welcome!  Please read [CONTRIBUTING.md](CONTRIBUTING.md) befor
 
 ## Customization Guide
 
-This README (and all per-tool READMEs) contain placeholders that you must replace before publishing.  Every placeholder is also marked with an inline comment in the relevant file.
+Each tool README includes a configuration reference table. Common values you may want to change:
 
-| Placeholder | Where it appears | What to replace it with |
-|-------------|-----------------|-------------------------|
-| `YOUR_GITHUB_USERNAME` | Badge URLs, clone command, all tool READMEs | Your GitHub username, e.g. `jsmith` |
-| `YOUR_EMAIL` | Contact section below | Your public contact email |
-| `YOUR_TWITTER_HANDLE` | Contact section below | Your Twitter/X handle (or remove the line) |
-| `docs/assets/banner.png` | `<img>` tag at the top of this file | Path to your real banner image |
+| Setting | Where it appears | Notes |
+|---------|-----------------|-------|
+| `docs/assets/banner.png` | `<img>` tag at the top of this file | Replace with your real banner image |
 | `docs/assets/demo-*.gif` | Each tool's README demo GIF | Screen-recorded GIF of the tool running |
-| `EPSG:XXXXX` | Tool READMEs, code comments | The actual EPSG code relevant to your data |
-| `YOUR_SLACK_WEBHOOK_URL` | OSM Change Monitor README | Your Slack incoming webhook URL |
-| `YOUR_GOOGLE_API_KEY` | Batch Geocoder README | Your Google Maps Geocoding API key |
+| EPSG codes | Tool READMEs, code examples | Use the EPSG code for your data's CRS |
+| Slack webhook URL | OSM Change Monitor | Your Slack incoming webhook URL |
+| Google API key | Batch Geocoder | Your Google Maps Geocoding API key |
 
 ---
 
@@ -229,15 +214,8 @@ Distributed under the MIT License.  See [LICENSE](LICENSE) for full text.
 
 ## Contact
 
-<!-- PLACEHOLDER ─────────────────────────────────────────────────────────────
-     Replace the values below with your real contact information.
-     Remove any line you don't want to share publicly.
-─────────────────────────────────────────────────────────────────────────── -->
-
-**Author:** YOUR_GITHUB_USERNAME  
-**Email:** YOUR_EMAIL  
-**Twitter / X:** [@YOUR_TWITTER_HANDLE](https://twitter.com/YOUR_TWITTER_HANDLE)  
-**GitHub:** [github.com/YOUR_GITHUB_USERNAME](https://github.com/YOUR_GITHUB_USERNAME)
+**Author:** matthew-lottly  
+**GitHub:** [github.com/matthew-lottly](https://github.com/matthew-lottly)
 
 ---
 

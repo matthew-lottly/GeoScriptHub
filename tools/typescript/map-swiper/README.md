@@ -63,16 +63,14 @@ pnpm add @geoscripthub/map-swiper maplibre-gl
 import { MapSwiper } from "@geoscripthub/map-swiper";
 
 const swiper = new MapSwiper({
-  containerId: "swiper",               // PLACEHOLDER: id of your <div>
-  center: [-0.09, 51.505],             // PLACEHOLDER: [lng, lat] of your area
-  zoom: 12,                            // PLACEHOLDER: initial zoom level
+  containerId: "swiper",
+  center: [-0.09, 51.505],
+  zoom: 12,
   left: {
-    // PLACEHOLDER: MapLibre style URL for the left (before) panel
     style: "https://demotiles.maplibre.org/style.json",
     label: "Before",
   },
   right: {
-    // PLACEHOLDER: MapLibre style URL for the right (after) panel
     style: "https://demotiles.maplibre.org/style.json",
     label: "After",
   },
@@ -84,7 +82,6 @@ swiper.mount();
 HTML:
 
 ```html
-<!-- PLACEHOLDER: set an explicit height in CSS -->
 <div id="swiper" style="width:100%; height:500px;"></div>
 ```
 
@@ -137,8 +134,8 @@ Cleanly destroy both maps and remove all event listeners.
 
 ```typescript
 {
-  style: string | object;  // PLACEHOLDER: MapLibre style URL or inline style
-  label?: string;          // PLACEHOLDER: e.g. "2015 Satellite", "Current OSM"
+  style: string | object;  // MapLibre style URL or inline style object
+  label?: string;          // e.g. "2015 Satellite", "Current OSM"
 }
 ```
 
@@ -156,17 +153,15 @@ These MapLibre-compatible style URLs require no API key:
 | OpenFreeMap Positron | `https://tiles.openfreemap.org/styles/positron` |
 
 For commercial-quality tiles requiring an API key:
-- **MapTiler** — `https://api.maptiler.com/maps/streets/style.json?key=YOUR_KEY`  
-  <!-- PLACEHOLDER: Register at https://cloud.maptiler.com/auth/widget for a free key -->
+- **MapTiler** — `https://api.maptiler.com/maps/streets/style.json?key=YOUR_KEY`
 - **Stadia Maps** — `https://tiles.stadiamaps.com/styles/alidade_smooth.json?api_key=YOUR_KEY`
 
 ---
 
 ## Customization Guide
 
-| Placeholder | Location | Description | Example |
+| Setting | Location | Description | Example |
 |-------------|----------|-------------|---------|
-| `YOUR_NAME` / `YOUR_EMAIL` | `package.json` → `author` | Package metadata | `"Jane <jane@example.com>"` |
 | `containerId` | `MapSwiperConfig` | DOM element id | `"my-map-swiper"` |
 | `center` | `MapSwiperConfig` | Map centre `[lng, lat]` | `[2.35, 48.85]` (Paris) |
 | `zoom` | `MapSwiperConfig` | Initial zoom | `12` |

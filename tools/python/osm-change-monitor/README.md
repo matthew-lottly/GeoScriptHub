@@ -138,19 +138,17 @@ from osm_change_monitor.monitor import (
 from osm_change_monitor.scheduler import MonitorScheduler
 
 # --- Configure bounding box ---
-# PLACEHOLDER: Replace coordinates with your area of interest
 bbox = BoundingBox(
-    south=51.47,    # PLACEHOLDER: south latitude
-    west=-0.15,     # PLACEHOLDER: west longitude
-    north=51.52,    # PLACEHOLDER: north latitude
-    east=-0.08,     # PLACEHOLDER: east longitude
+    south=51.47,
+    west=-0.15,
+    north=51.52,
+    east=-0.08,
 )
 
 # --- Configure notifiers ---
 notifiers = [
     JsonFileNotifier(Path("data/monitor/changes.jsonl")),
     SlackNotifier(
-        # PLACEHOLDER: your Slack Incoming Webhook URL
         webhook_url="https://hooks.slack.com/services/T00/B00/XXXXXX",
         min_changes=1,
     ),
@@ -159,7 +157,6 @@ notifiers = [
 # --- Create and run monitor ---
 monitor = OSMChangeMonitor(
     bbox=bbox,
-    # PLACEHOLDER: any OSM "key=value" tag
     osm_tag="amenity=hospital",
     output_dir=Path("data/monitor"),
     notifiers=notifiers,
@@ -225,8 +222,7 @@ class WebhookNotifier(NotifierBackend):
 MonitorScheduler(monitor, interval_minutes=60).start()
 ```
 
-Runs forever, intercepting SIGINT/SIGTERM for graceful shutdown.  
-<!-- PLACEHOLDER: Adjust interval_minutes to balance freshness vs. API load -->
+Runs forever, intercepting SIGINT/SIGTERM for graceful shutdown.
 
 ### Cron (recommended for production)
 
@@ -236,7 +232,6 @@ Runs forever, intercepting SIGINT/SIGTERM for graceful shutdown.
     --south 51.47 --west -0.15 --north 51.52 --east -0.08 \
     --tag "amenity=hospital" --output-dir /data/monitor >> /var/log/osm-monitor.log 2>&1
 ```
-<!-- PLACEHOLDER: Replace cron schedule, bounding box, and paths with your values -->
 
 ### Systemd service
 
@@ -247,7 +242,6 @@ After=network.target
 
 [Service]
 WorkingDirectory=/path/to/GeoScriptHub
-# PLACEHOLDER: Replace all paths and coordinates
 ExecStart=/path/to/venv/bin/geo-osm-monitor \
     --south 51.47 --west -0.15 --north 51.52 --east -0.08 \
     --tag "amenity=hospital" --output-dir /data/monitor --schedule 60
@@ -269,17 +263,14 @@ osm-monitor-data/
 └── changes.jsonl          ← Append-only change log (one JSON object per line)
 ```
 
-`latest_snapshot.json` is **overwritten on every run**.  `changes.jsonl` is **append-only**.  
-<!-- PLACEHOLDER: Mount a persistent volume (e.g. Docker volume) so state survives restarts -->
+`latest_snapshot.json` is **overwritten on every run**.  `changes.jsonl` is **append-only**.
 
 ---
 
 ## Customization Guide
 
-| Placeholder | File | Description | Example values |
+| Setting | File | Description | Example values |
 |-------------|------|-------------|----------------|
-| `YOUR_NAME` | `pyproject.toml` | Your name for package metadata | `"Jane Smith"` |
-| `YOUR_EMAIL@example.com` | `pyproject.toml` | Your contact email | `"jane@example.com"` |
 | Bounding box `south/west/north/east` | `cli.py` / `monitor.py` docstring | Area of interest | `51.47, -0.15, 51.52, -0.08` |
 | `osm_tag` | `monitor.py` / `cli.py` | OSM feature tag to watch | `"amenity=hospital"`, `"shop=supermarket"` |
 | `output_dir` | `monitor.py` / `cli.py` | State & log directory | `Path("data/osm-monitor")` |

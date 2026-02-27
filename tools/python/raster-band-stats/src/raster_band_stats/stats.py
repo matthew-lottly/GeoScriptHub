@@ -89,12 +89,8 @@ class BandStatsConfig:
 
     Attributes:
         output_format: Output file format — ``"json"`` or ``"csv"``.
-                       <!-- PLACEHOLDER: choose "json" for machine-readable output
-                            or "csv" to open in Excel / GIS software -->
         bands: Specific 1-based band indices to process.  ``None`` means
                all bands.
-               <!-- PLACEHOLDER: set to a list like [1, 3] to process only
-                    specific bands, e.g. [3, 4] for red and NIR on Landsat 8 -->
         compute_histogram: When ``True``, also compute a 256-bin histogram
                            for each band.  Adds processing time for large rasters.
         indent: JSON indentation level.  Only used when ``output_format="json"``.
@@ -122,10 +118,7 @@ class BandStatsReporter(GeoTool):
 
     Args:
         input_path: Path to the input raster file (GeoTIFF recommended).
-                    <!-- PLACEHOLDER: e.g. Path("data/landsat_scene.tif") -->
         output_path: Path for the output stats file.
-                     <!-- PLACEHOLDER: e.g. Path("output/band_stats.json")
-                          or Path("output/band_stats.csv") -->
         config: A :class:`BandStatsConfig` instance.
         verbose: Enable DEBUG-level logging.
 

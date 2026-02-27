@@ -79,14 +79,20 @@ const TILE_PROVIDERS: Record<TileProvider, TileLayerDef | null> = {
  * snippet depending on `config.selfContained`.
  */
 export class LeafletWidgetGenerator {
-  private readonly config: Required<
-    Pick<WidgetConfig, "containerId" | "view"> & Partial<WidgetConfig>
-  > &
-    WidgetConfig;
+  private readonly config: WidgetConfig & {
+    height: string;
+    width: string;
+    tileProvider: TileProvider;
+    geoJsonLayers: GeoJsonLayerConfig[];
+    markers: MarkerConfig[];
+    showZoomControl: boolean;
+    showLayerControl: boolean;
+    selfContained: boolean;
+  };
 
   /**
-   * @param config - Widget configuration.  See {@link WidgetConfig} for all
-   *   placeholder descriptions.
+   * @param config - Widget configuration. See {@link WidgetConfig} for
+   *   available options.
    */
   constructor(config: WidgetConfig) {
     this.config = {
@@ -140,7 +146,7 @@ export class LeafletWidgetGenerator {
 
   /** Emit a full self-contained HTML snippet (CDN Leaflet + CSS + init). */
   private _buildSelfContained(): string {
-    const LEAFLET_VERSION = "1.9.4"; // <!-- PLACEHOLDER: update Leaflet version as needed -->
+    const LEAFLET_VERSION = "1.9.4";
     const cdnBase = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist`;
 
     const containerStyle = [
@@ -265,8 +271,7 @@ ${initScript}`;
     if (this.config.tileProvider === "custom") {
       if (!this.config.tileUrl) {
         throw new Error(
-          "tileUrl is required when tileProvider is 'custom'. " +
-            "<!-- PLACEHOLDER: set tileUrl in your WidgetConfig -->",
+          "tileUrl is required when tileProvider is 'custom'.",
         );
       }
       return {
@@ -283,7 +288,6 @@ ${initScript}`;
 
     let url = def.url;
     if (this.config.tileProvider === "stadia-alidade-smooth" && this.config.stadiaApiKey) {
-      // PLACEHOLDER: Stadia Maps API key appended as query parameter
       url += `?api_key=${this.config.stadiaApiKey}`;
     }
 
@@ -293,7 +297,7 @@ ${initScript}`;
   /** Basic configuration validation. */
   private _validate(): void {
     if (!this.config.containerId) {
-      throw new Error("containerId is required. <!-- PLACEHOLDER: set containerId in WidgetConfig -->");
+      throw new Error("containerId is required.");
     }
     const { lat, lng, zoom } = this.config.view;
     if (lat < -90 || lat > 90) {

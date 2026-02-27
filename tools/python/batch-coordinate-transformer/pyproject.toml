@@ -10,8 +10,7 @@ readme = "README.md"
 license = { file = "../../LICENSE" }
 requires-python = ">=3.11"
 
-# PLACEHOLDER: replace YOUR_GITHUB_USERNAME with your actual GitHub username
-authors = [{ name = "YOUR_GITHUB_USERNAME" }]
+authors = [{ name = "matthew-lottly" }]
 
 keywords = ["gis", "geospatial", "crs", "reproject", "coordinates", "pyproj"]
 classifiers = [
@@ -42,11 +41,10 @@ dev = [
 # Installs the `geo-transform` command globally when the package is installed
 geo-transform = "src.batch_coord_transformer.cli:main"
 
-# PLACEHOLDER: replace YOUR_GITHUB_USERNAME with your actual GitHub username
 [project.urls]
-"Homepage" = "https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub"
-"Source" = "https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/tree/main/tools/python/batch-coordinate-transformer"
-"Bug Tracker" = "https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/issues"
+"Homepage" = "https://github.com/matthew-lottly/GeoScriptHub"
+"Source" = "https://github.com/matthew-lottly/GeoScriptHub/tree/main/tools/python/batch-coordinate-transformer"
+"Bug Tracker" = "https://github.com/matthew-lottly/GeoScriptHub/issues"
 
 [tool.ruff]
 line-length = 100

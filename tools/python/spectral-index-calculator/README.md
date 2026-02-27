@@ -138,7 +138,6 @@ from spectral_index_calculator.calculator import (
 # --- Minimal: NDVI only ---
 tool = SpectralIndexCalculator(
     band_files=BandFileMap(
-        # PLACEHOLDER: swap in your actual band file paths
         red=Path("data/LC08_B4.TIF"),    # Landsat 8 Red
         nir=Path("data/LC08_B5.TIF"),    # Landsat 8 NIR
     ),
@@ -249,13 +248,10 @@ output/
 
 ## Customization Guide
 
-Every setting you are expected to change has a `<!-- PLACEHOLDER -->` comment in the source code.  
-The table below maps each placeholder to its location and describes valid values.
+The table below maps each configurable setting to its location and describes valid values.
 
-| Placeholder | File | Line ref | Description | Example values |
+| Setting | File | Line ref | Description | Example values |
 |-------------|------|----------|-------------|----------------|
-| `YOUR_NAME` | `pyproject.toml` | `authors` | Your full name for package metadata | `"Jane Smith"` |
-| `YOUR_EMAIL@example.com` | `pyproject.toml` | `authors` | Your contact email | `"jane@example.com"` |
 | Red band path | `cli.py` comment / `calculator.py` docstring | `--red` | Path to red band GeoTIFF | `Path("LC08_B4.TIF")` |
 | NIR band path | `cli.py` comment / `calculator.py` docstring | `--nir` | Path to NIR band GeoTIFF | `Path("B08.tif")` |
 | Green band path | `cli.py` comment | `--green` | Path to green band (NDWI only) | `Path("LC08_B3.TIF")` |

@@ -48,48 +48,38 @@ logger = logging.getLogger("geoscripthub.osm_change_monitor.cli")
 # Bounding box
 @click.option("--south", required=True, type=float,
               help="South latitude of the bounding box.")
-# PLACEHOLDER: replace with your bounding box south latitude, e.g. 51.47
 @click.option("--west", required=True, type=float,
               help="West longitude of the bounding box.")
-# PLACEHOLDER: replace with your bounding box west longitude, e.g. -0.15
 @click.option("--north", required=True, type=float,
               help="North latitude of the bounding box.")
-# PLACEHOLDER: replace with your bounding box north latitude, e.g. 51.52
 @click.option("--east", required=True, type=float,
               help="East longitude of the bounding box.")
-# PLACEHOLDER: replace with your bounding box east longitude, e.g. -0.08
 # OSM tag
 @click.option(
     "--tag", "osm_tag", required=True,
-    # PLACEHOLDER: OSM "key=value" tag to monitor, e.g. "amenity=hospital"
     help='OSM tag to monitor, in "key=value" format (e.g. amenity=hospital).',
 )
 # Output
 @click.option(
     "--output-dir", default="osm-monitor-data", show_default=True,
-    # PLACEHOLDER: Directory for snapshot and change log files
     help="Directory for snapshot JSON and changes.jsonl.",
 )
 # Scheduler
 @click.option(
     "--schedule", "interval_minutes", default=None, type=int,
-    # PLACEHOLDER: Poll interval in minutes; omit for a single one-shot run
     help="Poll interval (minutes). Omit for a single one-shot run.",
 )
 # Notifier overrides
 @click.option(
     "--slack-webhook", default=None, envvar="OSM_SLACK_WEBHOOK",
-    # PLACEHOLDER: Set via env var OSM_SLACK_WEBHOOK or pass directly
     help="Slack Incoming Webhook URL (or set OSM_SLACK_WEBHOOK env var).",
 )
 @click.option(
     "--slack-min-changes", default=1, show_default=True, type=int,
-    # PLACEHOLDER: Minimum changed features before posting to Slack
     help="Minimum number of changes before triggering Slack notification.",
 )
 @click.option(
     "--overpass-url", default=OverpassClient.DEFAULT_API_URL, show_default=True,
-    # PLACEHOLDER: Override if you run a private Overpass instance
     help="Overpass API URL.",
 )
 @click.option("--verbose", is_flag=True, default=False, help="Enable DEBUG logging.")

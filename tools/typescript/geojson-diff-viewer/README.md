@@ -51,11 +51,10 @@ yarn add @geoscripthub/geojson-diff-viewer leaflet
 
 ```typescript
 import { GeoJsonDiffViewer } from "@geoscripthub/geojson-diff-viewer";
-import "leaflet/dist/leaflet.css"; // PLACEHOLDER: import Leaflet CSS
+import "leaflet/dist/leaflet.css";
 
 const viewer = new GeoJsonDiffViewer({
-  // PLACEHOLDER: id of the <div> that will host the map
-  containerId: "diff-map",      // <div id="diff-map"></div>
+  containerId: "diff-map",
   height:      "500px",
   showLegend:  true,
 });
@@ -67,11 +66,9 @@ viewer.update(beforeCollection, afterCollection);
 ### Plain HTML (UMD / CDN)
 
 ```html
-<!-- PLACEHOLDER: Pin leaflet to a specific version -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- PLACEHOLDER: Adjust the path to the built UMD bundle -->
 <script src="dist/geojson-diff-viewer.umd.cjs"></script>
 
 <div id="diff-map" style="height: 500px;"></div>
@@ -156,10 +153,9 @@ Override any colour via `DiffViewerConfig.styles`.
 
 ## 🛠 Customization Guide
 
-Every placeholder in the source is annotated with an `<!-- PLACEHOLDER: ... -->`
-comment.  The table below is a quick-reference index for the most common ones.
+Every configurable option is documented below.
 
-| Placeholder | Location | What to Change |
+| Setting | Location | What to Change |
 |---|---|---|
 | `containerId` | `DiffViewerConfig` | CSS `id` of your map `<div>` |
 | `height` / `width` | `DiffViewerConfig` | CSS dimensions of the map container |

@@ -9,8 +9,7 @@ description = "Monitor OSM bounding boxes for feature changes and notify via Sla
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-# PLACEHOLDER: Replace with your name and email
-authors = [{ name = "YOUR_NAME", email = "YOUR_EMAIL@example.com" }]
+authors = [{ name = "matthew-lottly" }]
 keywords = ["gis", "openstreetmap", "osm", "overpass", "monitoring"]
 classifiers = [
     "Development Status :: 4 - Beta",

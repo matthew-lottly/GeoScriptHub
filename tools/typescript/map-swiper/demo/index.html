@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- PLACEHOLDER: Replace with your page title -->
   <title>Map Swiper — Before / After Demo</title>
-  <!-- MapLibre GL CSS — PLACEHOLDER: pin to a specific version for production -->
+  <!-- MapLibre GL CSS -->
   <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; }
@@ -19,7 +18,7 @@
     main { max-width: 1100px; margin: 1.5rem auto; padding: 0 1rem; }
     p.lead { color: #aaa; margin-bottom: 1rem; font-size: 0.95rem; }
 
-    /* PLACEHOLDER: Adjust swiper container size to suit your layout */
+    /* Swiper container */
     #swiper {
       width: 100%;
       height: 60vh;
@@ -52,7 +51,6 @@
     Drag the centre handle left and right to compare two map styles.
   </p>
 
-  <!-- PLACEHOLDER: Give this div an explicit width + height in CSS above -->
   <div id="swiper"></div>
 
   <div class="controls">
@@ -62,7 +60,7 @@
   </div>
 </main>
 
-<!-- MapLibre GL JS — PLACEHOLDER: pin to same version as your CSS link -->
+<!-- MapLibre GL JS -->
 <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
 <!-- Built library — run `pnpm build` first -->
 <script type="module">
@@ -71,11 +69,9 @@
   const swiper = new MapSwiper({
     containerId: "swiper",
 
-    // PLACEHOLDER: Replace coordinates with your area of interest
     center: [-0.09, 51.505],
     zoom: 12,
 
-    // PLACEHOLDER: Replace with your chosen left-panel style URL
     // Free styles that need no API key:
     //   https://demotiles.maplibre.org/style.json  (MapLibre demo tiles)
     //   https://tiles.openfreemap.org/styles/liberty (OpenFreeMap)
@@ -84,7 +80,6 @@
       label: "Before",
     },
 
-    // PLACEHOLDER: Replace with your chosen right-panel style URL
     right: {
       style: "https://demotiles.maplibre.org/style.json",
       label: "After",

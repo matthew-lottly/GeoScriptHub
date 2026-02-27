@@ -155,10 +155,7 @@ class Validators:
         (``"EPSG:4326"``), PROJ strings, and WKT strings.
 
         Args:
-            crs_string: The CRS identifier to validate.
-                        <!-- PLACEHOLDER: replace with your target CRS,
-                             e.g. "EPSG:4326" for WGS84 or "EPSG:32614"
-                             for UTM Zone 14N -->
+            crs_string: The CRS identifier to validate (e.g. ``"EPSG:4326"``).
 
         Raises:
             CRSError: If *crs_string* is not recognised by pyproj.
@@ -189,8 +186,6 @@ class Validators:
             df: A ``pandas.DataFrame`` (typed as ``object`` here to avoid
                 importing pandas at module load time).
             required_columns: List of column names that must be present.
-                <!-- PLACEHOLDER: replace with the actual column names
-                     in your CSV, e.g. ["address", "city", "zip_code"] -->
 
         Raises:
             ColumnNotFoundError: On the first missing column found.
@@ -214,8 +209,6 @@ class Validators:
 
         Args:
             band_index: 1-based band index requested by the user.
-                        <!-- PLACEHOLDER: band numbers are 1-indexed,
-                             so band 1 = first band, band 2 = second, etc. -->
             total_bands: Total number of bands in the raster file.
 
         Raises:

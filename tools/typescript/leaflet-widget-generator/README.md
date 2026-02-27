@@ -67,8 +67,8 @@ pnpm install
 import { LeafletWidgetGenerator } from "@geoscripthub/leaflet-widget-generator";
 
 const generator = new LeafletWidgetGenerator({
-  containerId: "map",             // PLACEHOLDER: id of your <div>
-  view: { lat: 51.505, lng: -0.09, zoom: 13 }, // PLACEHOLDER: your coordinates
+  containerId: "map",
+  view: { lat: 51.505, lng: -0.09, zoom: 13 },
   tileProvider: "openstreetmap",
   selfContained: true,
 });
@@ -148,18 +148,18 @@ All `WidgetConfig` properties:
 
 ```typescript
 { lat: number; lng: number; zoom: number }
-// PLACEHOLDER: lat [-90,90], lng [-180,180], zoom [0,22]
+// lat: [-90, 90], lng: [-180, 180], zoom: [0, 22]
 ```
 
 ### `GeoJsonLayerConfig`
 
 ```typescript
 {
-  url: string;          // PLACEHOLDER: GeoJSON file URL or data: URI
-  name: string;         // PLACEHOLDER: Human-readable layer name
-  fillColor?: string;   // PLACEHOLDER: e.g. "#e74c3c"
-  color?: string;       // PLACEHOLDER: stroke colour
-  weight?: number;      // PLACEHOLDER: stroke width in pixels
+  url: string;          // GeoJSON file URL or data: URI
+  name: string;         // Human-readable layer name
+  fillColor?: string;   // e.g. "#e74c3c"
+  color?: string;       // Stroke colour
+  weight?: number;      // Stroke width in pixels
   visible?: boolean;    // default: true
 }
 ```
@@ -168,9 +168,9 @@ All `WidgetConfig` properties:
 
 ```typescript
 {
-  lat: number;          // PLACEHOLDER: marker latitude
-  lng: number;          // PLACEHOLDER: marker longitude
-  popupHtml?: string;   // PLACEHOLDER: HTML shown in click popup
+  lat: number;          // Marker latitude
+  lng: number;          // Marker longitude
+  popupHtml?: string;   // HTML shown in click popup
 }
 ```
 
@@ -189,9 +189,8 @@ All `WidgetConfig` properties:
 
 ## Customization Guide
 
-| Placeholder | Location | Description | Example |
+| Setting | Location | Description | Example |
 |-------------|----------|-------------|---------|
-| `YOUR_NAME` / `YOUR_EMAIL` | `package.json` → `author` | Package metadata | `"Jane <jane@example.com>"` |
 | `containerId` | `WidgetConfig` | id of your map `<div>` | `"map"`, `"city-map"` |
 | `view.lat/lng/zoom` | `WidgetConfig.view` | Map centre + initial zoom | `{ lat: 48.85, lng: 2.35, zoom: 12 }` |
 | `tileProvider` | `WidgetConfig` | Choose basemap | `"opentopomap"` |

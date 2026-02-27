@@ -33,82 +33,51 @@ from shared.python.exceptions import GeoScriptHubError
     "--input", "-i", "input_path",
     required=True,
     type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
-    help=(
-        "Path to the input CSV file.\n"
-        # PLACEHOLDER: replace with your actual CSV path
-        "Example: --input data/addresses.csv"
-    ),
+    help="Path to the input CSV file.",
 )
 @click.option(
     "--output", "-o", "output_path",
     required=True,
     type=click.Path(file_okay=True, dir_okay=False, path_type=Path),
-    help=(
-        "Path for the output GeoJSON file.\n"
-        # PLACEHOLDER: replace with your desired output path
-        "Example: --output output/addresses.geojson"
-    ),
+    help="Path for the output GeoJSON file.",
 )
 @click.option(
     "--address-col",
     default="address",
     show_default=True,
-    help=(
-        "CSV column containing address strings.\n"
-        # PLACEHOLDER: replace with the actual column name in your CSV,
-        #              e.g. --address-col full_address
-    ),
+    help="CSV column containing address strings.",
 )
 @click.option(
     "--backend",
     type=click.Choice(["nominatim", "google"], case_sensitive=False),
     default="nominatim",
     show_default=True,
-    help=(
-        "Geocoding provider to use.\n"
-        # PLACEHOLDER: choose 'nominatim' (free, no key) or 'google' (requires API key)
-    ),
+    help="Geocoding provider to use.",
 )
 @click.option(
     "--user-agent",
     default="geoscripthub-geocoder/1.0",
     show_default=True,
-    help=(
-        "User-agent string for Nominatim (ignored for Google).\n"
-        # PLACEHOLDER: replace with a string that identifies your app,
-        #              e.g. --user-agent "my-company-geocoder/1.0"
-    ),
+    help="User-agent string for Nominatim (ignored for Google).",
 )
 @click.option(
     "--google-api-key",
     default=None,
     envvar="GOOGLE_MAPS_API_KEY",
-    help=(
-        "Google Maps API key (required when --backend google).\n"
-        # PLACEHOLDER: replace YOUR_GOOGLE_API_KEY or set the
-        #              GOOGLE_MAPS_API_KEY environment variable instead
-        "Can also be set via the GOOGLE_MAPS_API_KEY environment variable."
-    ),
+    help="Google Maps API key (required when --backend google). "
+         "Can also be set via the GOOGLE_MAPS_API_KEY environment variable.",
 )
 @click.option(
     "--rate-limit",
     default=1.1,
     show_default=True,
     type=float,
-    help=(
-        "Seconds to wait between geocoding requests.\n"
-        # PLACEHOLDER: keep >= 1.0 for Nominatim; can be ~0.05 for Google
-    ),
+    help="Seconds to wait between geocoding requests.",
 )
 @click.option(
     "--extra-cols",
     default="",
-    help=(
-        "Comma-separated list of extra CSV columns to include in GeoJSON properties.\n"
-        # PLACEHOLDER: replace with your column names,
-        #              e.g. --extra-cols name,city,zip_code
-        "Example: --extra-cols name,city,zip"
-    ),
+    help="Comma-separated list of extra CSV columns to include in GeoJSON properties.",
 )
 @click.option("--verbose", "-v", is_flag=True, default=False, help="Enable debug logging.")
 def main(

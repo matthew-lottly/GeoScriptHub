@@ -1,13 +1,11 @@
 # Shapefile Health Checker
 
-<!-- PLACEHOLDER: replace YOUR_GITHUB_USERNAME with your actual GitHub username -->
-[![CI — Python](https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/actions/workflows/ci-python.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/actions/workflows/ci-python.yml)
+[![CI — Python](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml/badge.svg)](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../../../LICENSE)
 
 > Validate Shapefiles, GeoJSON, and GeoPackage files against **six configurable health checks** — output a Markdown or HTML report in seconds.
 
-<!-- PLACEHOLDER: replace with a demo GIF of the tool running in a terminal -->
 <!-- ![Demo](../../../../docs/assets/demo-shapefile-health-checker.gif) -->
 
 ---
@@ -102,9 +100,9 @@ from pathlib import Path
 from src.shapefile_health_checker.checker import ShapefileHealthChecker
 
 tool = ShapefileHealthChecker(
-    input_path=Path("data/parcels.shp"),    # PLACEHOLDER: path to your vector file
-    output_path=Path("output/report.md"),   # PLACEHOLDER: path for your report
-    report_format="markdown",               # PLACEHOLDER: "markdown" or "html"
+    input_path=Path("data/parcels.shp"),
+    output_path=Path("output/report.md"),
+    report_format="markdown",
 )
 tool.run()
 
@@ -141,12 +139,12 @@ ShapefileHealthChecker(
 
 ## Configuration Reference
 
-| Parameter | Type | Default | Description | Placeholder |
-|-----------|------|---------|-------------|-------------|
-| `--input` / `input_path` | `Path` | — | Path to the input vector file | **PLACEHOLDER** — set to your `.shp`, `.geojson`, or `.gpkg` file |
-| `--output` / `output_path` | `Path` | — | Path for the output report | **PLACEHOLDER** — set to your desired output path |
-| `--format` / `report_format` | `str` | `"markdown"` | Report format | **PLACEHOLDER** — `"markdown"` produces `.md`, `"html"` produces `.html` |
-| `--skip-check` | `str` (repeatable) | none | Checks to skip by name slug | **PLACEHOLDER** — add check names you want to omit (see check list above) |
+| Parameter | Type | Default | Description | Example |
+|-----------|------|---------|-------------|--------|
+| `--input` / `input_path` | `Path` | — | Path to the input vector file | `data/parcels.shp` |
+| `--output` / `output_path` | `Path` | — | Path for the output report | `output/report.md` |
+| `--format` / `report_format` | `str` | `"markdown"` | Report format (`"markdown"` or `"html"`) | `"html"` |
+| `--skip-check` | `str` (repeatable) | none | Checks to skip by name slug | See check list above |
 | `--verbose` | `bool` | `False` | Debug logging | Set to `True` / pass `-v` to see per-feature detail |
 
 ---

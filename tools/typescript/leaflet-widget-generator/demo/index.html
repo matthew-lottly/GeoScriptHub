@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- PLACEHOLDER: Replace "My Map Demo" with your page title -->
   <title>Leaflet Widget Generator — Live Demo</title>
   <style>
-    /* PLACEHOLDER: Adjust page-level styles to match your site */
+    /* Page-level styles */
     *, *::before, *::after { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, sans-serif; background: #f5f5f5; }
     header {
@@ -23,7 +22,7 @@
     .card h2 { margin: 0; padding: 1rem 1.5rem; background: #ecf0f1; font-size: 1rem; }
     .map-wrap { padding: 1rem; }
 
-    /* PLACEHOLDER: Adjust map container sizes to suit your layout */
+    /* Map container sizes */
     #map-basic        { height: 400px; }
     #map-markers      { height: 400px; }
     #map-geojson      { height: 400px; }
@@ -69,8 +68,7 @@
 
 </main>
 
-<!-- Leaflet CSS + JS from CDN (same version used by the generator) -->
-<!-- PLACEHOLDER: Pin to a specific Leaflet version for production -->
+<!-- Leaflet CSS + JS from CDN (pinned to v1.9.4) -->
 <link
   rel="stylesheet"
   href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -78,7 +76,6 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <!-- The compiled library bundle (run `pnpm build` to generate) -->
-<!-- PLACEHOLDER: Update path if deploying outside Vite dev server -->
 <script type="module">
   import { LeafletWidgetGenerator } from "../dist/leaflet-widget-generator.js";
 
@@ -86,7 +83,6 @@
   new LeafletWidgetGenerator({
     containerId: "map-basic",
     height: "400px",
-    // PLACEHOLDER: Change centre coordinates to your area of interest
     view: { lat: 51.505, lng: -0.09, zoom: 13 },
     tileProvider: "openstreetmap",
     scaleControl: { position: "bottomleft", metric: true },
@@ -106,7 +102,6 @@
   const demo2Script = new LeafletWidgetGenerator({
     containerId: "map-markers",
     height: "400px",
-    // PLACEHOLDER: Adjust coordinates and popup content
     view: { lat: 51.505, lng: -0.09, zoom: 13 },
     tileProvider: "openstreetmap",
     markers: [
@@ -131,7 +126,6 @@
     scaleControl: { metric: true },
     geoJsonLayers: [
       {
-        // PLACEHOLDER: Replace with your GeoJSON endpoint or file path
         url: "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson",
         name: "Countries",
         fillColor: "#27ae60",

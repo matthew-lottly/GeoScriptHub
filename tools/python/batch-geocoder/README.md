@@ -1,13 +1,11 @@
 # Batch Geocoder
 
-<!-- PLACEHOLDER: replace YOUR_GITHUB_USERNAME with your actual GitHub username -->
-[![CI — Python](https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/actions/workflows/ci-python.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/actions/workflows/ci-python.yml)
+[![CI — Python](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml/badge.svg)](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../../../LICENSE)
 
 > Convert a CSV of addresses to a **GeoJSON FeatureCollection** — free with Nominatim, or fast with Google Maps.
 
-<!-- PLACEHOLDER: replace with a demo GIF -->
 <!-- ![Demo](../../../../docs/assets/demo-batch-geocoder.gif) -->
 
 ---
@@ -90,14 +88,14 @@ from pathlib import Path
 from src.batch_geocoder.geocoder import BatchGeocoder, NominatimBackend
 
 tool = BatchGeocoder(
-    input_path=Path("data/customers.csv"),         # PLACEHOLDER: your CSV path
-    output_path=Path("output/customers.geojson"),  # PLACEHOLDER: your output path
-    address_col="full_address",                    # PLACEHOLDER: your address column name
+    input_path=Path("data/customers.csv"),
+    output_path=Path("output/customers.geojson"),
+    address_col="full_address",
     backend=NominatimBackend(
-        user_agent="my-company/1.0",               # PLACEHOLDER: your app name
-        rate_limit_seconds=1.1,                    # PLACEHOLDER: >= 1.0 for Nominatim
+        user_agent="my-company/1.0",
+        rate_limit_seconds=1.1,
     ),
-    extra_cols=["name", "city", "zip"],            # PLACEHOLDER: columns to include in output
+    extra_cols=["name", "city", "zip"],
 )
 tool.run()
 
@@ -110,16 +108,16 @@ for result in tool.results:
 
 ## Configuration Reference
 
-| Parameter | Type | Default | Description | Placeholder |
-|-----------|------|---------|-------------|-------------|
-| `--input` / `input_path` | `Path` | — | Path to the input CSV file | **PLACEHOLDER** — your CSV file path |
-| `--output` / `output_path` | `Path` | — | Path for the output GeoJSON file | **PLACEHOLDER** — desired output path |
-| `--address-col` / `address_col` | `str` | `"address"` | Column containing address strings | **PLACEHOLDER** — your address column name |
-| `--backend` | `"nominatim"` \| `"google"` | `"nominatim"` | Geocoding provider | **PLACEHOLDER** — choose provider |
-| `--user-agent` | `str` | `"geoscripthub-geocoder/1.0"` | App identifier for Nominatim | **PLACEHOLDER** — set to your app name |
-| `--google-api-key` | `str` | env var | Google Maps API key | **PLACEHOLDER** — `YOUR_GOOGLE_API_KEY` or set `GOOGLE_MAPS_API_KEY` env var |
-| `--rate-limit` | `float` | `1.1` | Seconds between requests | **PLACEHOLDER** — `>= 1.0` for Nominatim; `~0.05` for Google |
-| `--extra-cols` | `str` (CSV) | `""` | Extra columns to carry into GeoJSON | **PLACEHOLDER** — comma-separated column names, e.g. `name,city,zip` |
+| Parameter | Type | Default | Description | Example |
+|-----------|------|---------|-------------|--------|
+| `--input` / `input_path` | `Path` | — | Path to the input CSV file | `data/customers.csv` |
+| `--output` / `output_path` | `Path` | — | Path for the output GeoJSON file | `output/customers.geojson` |
+| `--address-col` / `address_col` | `str` | `"address"` | Column containing address strings | `"full_address"` |
+| `--backend` | `"nominatim"` \| `"google"` | `"nominatim"` | Geocoding provider | `"nominatim"` |
+| `--user-agent` | `str` | `"geoscripthub-geocoder/1.0"` | App identifier for Nominatim | `"my-company/1.0"` |
+| `--google-api-key` | `str` | env var | Google Maps API key | Set `GOOGLE_MAPS_API_KEY` env var |
+| `--rate-limit` | `float` | `1.1` | Seconds between requests | `>= 1.0` for Nominatim; `~0.05` for Google |
+| `--extra-cols` | `str` (CSV) | `""` | Extra columns to carry into GeoJSON | `name,city,zip` |
 | `--verbose` | `bool` | `False` | Debug logging | Pass `-v` to see per-address results |
 
 ---
@@ -134,7 +132,7 @@ for result in tool.results:
 ### Google Maps Geocoding API
 - Requires a Google Cloud project with the Geocoding API enabled.
 - Generate an API key at [console.cloud.google.com](https://console.cloud.google.com/) → APIs & Services → Credentials.
-- **PLACEHOLDER**: Store the key in an environment variable (`GOOGLE_MAPS_API_KEY`) — never commit it to version control.
+- **Important**: Store the key in an environment variable (`GOOGLE_MAPS_API_KEY`) — never commit it to version control.
 
 ### Custom Backend
 

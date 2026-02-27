@@ -130,10 +130,6 @@ class GeocoderBackend(ABC):
 
         Args:
             address: The full address to geocode.
-                     <!-- PLACEHOLDER: the format expected depends on your
-                          provider.  Nominatim accepts natural-language strings
-                          such as "1600 Pennsylvania Ave NW, Washington DC".
-                          Google accepts the same format. -->
 
         Returns:
             A :class:`GeocodeResult` — success flag indicates whether a
@@ -153,14 +149,10 @@ class NominatimBackend(GeocoderBackend):
     do not exceed 1 request/second (use ``rate_limit_seconds >= 1.0``).
 
     Args:
-        user_agent: Identifies your application to Nominatim.
-                    <!-- PLACEHOLDER: replace with a descriptive name for
-                         your project, e.g. "my-company-geocoder/1.0"
-                         Do NOT use a generic string like "python-requests". -->
-        rate_limit_seconds: Seconds to sleep between requests.
-                            <!-- PLACEHOLDER: must be >= 1.0 to comply with
-                                 Nominatim's fair-use policy. Increase to
-                                 1.5–2.0 for larger batches. -->
+        user_agent: Identifies your application to Nominatim.  Use a
+                    descriptive name (e.g. ``"my-company-geocoder/1.0"``).
+        rate_limit_seconds: Seconds to sleep between requests.  Must be
+                            ``>= 1.0`` to comply with Nominatim usage policy.
         timeout: HTTP request timeout in seconds.
 
     Reference:
@@ -175,9 +167,7 @@ class NominatimBackend(GeocoderBackend):
         rate_limit_seconds: float = 1.1,
         timeout: int = 10,
     ) -> None:
-        # PLACEHOLDER: set user_agent to something that identifies your project
         self.user_agent = user_agent
-        # PLACEHOLDER: keep rate_limit_seconds >= 1.0
         self.rate_limit_seconds = rate_limit_seconds
         self.timeout = timeout
         self._session = requests.Session()
@@ -250,17 +240,10 @@ class GoogleBackend(GeocoderBackend):
     Requires a valid Google Maps API key with the Geocoding API enabled.
 
     Args:
-        api_key: Your Google Maps Geocoding API key.
-                 <!-- PLACEHOLDER: replace with your actual API key.
-                      Generate one at https://console.cloud.google.com/
-                      under "APIs & Services → Credentials".
-                      NEVER commit this value to version control —
-                      use an environment variable or .env file instead:
-                        import os
-                        api_key = os.environ["GOOGLE_MAPS_API_KEY"] -->
+        api_key: Your Google Maps Geocoding API key.  Never commit this
+                 value to version control — use an environment variable
+                 or ``.env`` file instead.
         rate_limit_seconds: Seconds to sleep between requests.
-                            <!-- PLACEHOLDER: Google allows up to 50 req/s
-                                 on pay-as-you-go plans; default 0.05 is safe. -->
         timeout: HTTP request timeout in seconds.
 
     Reference:
@@ -275,7 +258,6 @@ class GoogleBackend(GeocoderBackend):
         rate_limit_seconds: float = 0.05,
         timeout: int = 10,
     ) -> None:
-        # PLACEHOLDER: supply your Google Maps API key here or via env var
         self.api_key = api_key
         self.rate_limit_seconds = rate_limit_seconds
         self.timeout = timeout
@@ -357,19 +339,12 @@ class BatchGeocoder(GeoTool):
 
     Args:
         input_path: Path to the input CSV file.
-                    <!-- PLACEHOLDER: path to your CSV file,
-                         e.g. Path("data/customers.csv") -->
         output_path: Path for the output GeoJSON file.
-                     <!-- PLACEHOLDER: e.g. Path("output/customers.geojson") -->
         address_col: Name of the CSV column containing address strings.
-                     <!-- PLACEHOLDER: replace with the actual column name
-                          in your CSV, e.g. "full_address", "street", "address" -->
         backend: A :class:`GeocoderBackend` instance.  Defaults to
                  :class:`NominatimBackend`.
         extra_cols: Additional CSV columns to carry through as GeoJSON
                     feature properties.
-                    <!-- PLACEHOLDER: list any columns you want preserved
-                         in the output, e.g. ["name", "phone", "zip"] -->
         verbose: Enable DEBUG-level logging.
 
     Example::
@@ -396,10 +371,8 @@ class BatchGeocoder(GeoTool):
         verbose: bool = False,
     ) -> None:
         super().__init__(input_path, output_path, verbose=verbose)
-        # PLACEHOLDER: set address_col to the name of your address column
         self.address_col = address_col
         self.backend: GeocoderBackend = backend or NominatimBackend()
-        # PLACEHOLDER: list the extra CSV columns you want in the GeoJSON output
         self.extra_cols: list[str] = extra_cols or []
 
         self._results: list[GeocodeResult] = []

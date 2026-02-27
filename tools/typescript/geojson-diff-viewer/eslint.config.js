@@ -19,6 +19,7 @@ export default [
     },
     rules: {
       ...tseslint.configs["recommended"].rules,
+      "no-undef": "off",
       "@typescript-eslint/explicit-function-return-type": "warn",
       "@typescript-eslint/no-non-null-assertion": "warn",
       "no-console": "warn",

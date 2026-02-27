@@ -34,14 +34,11 @@ export interface DiffResult {
 export interface DiffEngineOptions {
   /**
    * Property name(s) used to match features across the two collections.
-   * If a feature in `a` has, for example, `properties.id === 42`, a feature
+   * If a feature in `a` has `properties.id === 42`, a feature
    * in `b` with the same `id` value is considered the same feature.
    *
-   * If ``null`` (default), features are matched by their serialised geometry
+   * If `null` (default), features are matched by their serialised geometry
    * string (coordinate-level comparison, regardless of properties).
-   *
-   * <!-- PLACEHOLDER: Set to the unique identifier property in your data,
-   *      e.g. "id", "osm_id", "OBJECTID", ["id", "type"] -->
    */
   matchBy: string | string[] | null;
 }
@@ -50,19 +47,16 @@ export interface DiffEngineOptions {
 export interface DiffStyle {
   /**
    * Fill + stroke colour for added features.
-   * <!-- PLACEHOLDER: Any CSS colour, e.g. "#2ecc71", "rgba(0,200,100,0.6)" -->
    */
   addedColor: string;
 
   /**
    * Fill + stroke colour for removed features.
-   * <!-- PLACEHOLDER: Any CSS colour, e.g. "#e74c3c" -->
    */
   removedColor: string;
 
   /**
    * Fill + stroke colour for unchanged features.
-   * <!-- PLACEHOLDER: Any CSS colour, e.g. "#95a5a6" -->
    */
   unchangedColor: string;
 
@@ -77,32 +71,26 @@ export interface DiffStyle {
 export interface DiffViewerConfig {
   /**
    * CSS id of the container element (without `#`).
-   * <!-- PLACEHOLDER: Must match the `id` of your map <div>, e.g. "diff-map" -->
    */
   containerId: string;
 
   /**
-   * Container height (CSS string).
-   * <!-- PLACEHOLDER: e.g. "500px", "70vh" -->
+   * Container height (CSS string, e.g. `"500px"`).
    */
   height?: string;
 
   /**
-   * Container width (CSS string).
-   * <!-- PLACEHOLDER: e.g. "100%", "800px" -->
+   * Container width (CSS string, e.g. `"100%"`).
    */
   width?: string;
 
   /**
-   * MapLibre / Leaflet tile URL template.
-   * <!-- PLACEHOLDER: Any XYZ tile URL, e.g.:
-   *      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" -->
+   * Leaflet tile URL template.
    */
   tileUrl?: string;
 
   /**
    * Tile attribution HTML.
-   * <!-- PLACEHOLDER: e.g. '© <a href="https://openstreetmap.org">OSM</a>' -->
    */
   tileAttribution?: string;
 

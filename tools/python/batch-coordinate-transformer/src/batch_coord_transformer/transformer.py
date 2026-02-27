@@ -83,20 +83,10 @@ class TransformerConfig:
     """Configuration bundle for :class:`CoordinateTransformer`.
 
     Attributes:
-        from_crs: Source CRS string.
-                  <!-- PLACEHOLDER: set to the CRS your input data is in,
-                       e.g. "EPSG:32614" for UTM Zone 14N,
-                            "EPSG:4269" for NAD83,
-                            "EPSG:4326" for WGS84 -->
-        to_crs: Target CRS string.
-                <!-- PLACEHOLDER: set to the CRS you want the output in,
-                     e.g. "EPSG:4326" for WGS84 (lat/lon) -->
+        from_crs: Source CRS string (e.g. ``"EPSG:32614"``).
+        to_crs: Target CRS string (e.g. ``"EPSG:4326"``).
         lon_col: Name of the column containing X / longitude / easting values.
-                 <!-- PLACEHOLDER: replace with the actual column name in
-                      your CSV, e.g. "longitude", "x", "easting" -->
         lat_col: Name of the column containing Y / latitude / northing values.
-                 <!-- PLACEHOLDER: replace with the actual column name in
-                      your CSV, e.g. "latitude", "y", "northing" -->
         output_format: Output file format.  One of ``"csv"`` or ``"geojson"``.
         always_xy: When ``True``, enforce (longitude, latitude) axis order
                    regardless of CRS definition.  Recommended to keep as
@@ -128,11 +118,7 @@ class CoordinateTransformer(GeoTool):
 
     Args:
         input_path: Path to the input CSV file.
-                    <!-- PLACEHOLDER: path to your input file,
-                         e.g. Path("data/survey_points.csv") -->
         output_path: Path where the reprojected output will be written.
-                     <!-- PLACEHOLDER: desired output path,
-                          e.g. Path("output/survey_points_wgs84.csv") -->
         config: A :class:`TransformerConfig` instance containing CRS strings,
                 column names, and output format settings.
         verbose: Enable DEBUG-level logging.  Defaults to ``False``.

@@ -71,11 +71,7 @@ class GeoTool(ABC):
 
         Args:
             input_path: Path to the primary input file or directory.
-                        <!-- PLACEHOLDER: replace with the actual path
-                             to your input data, e.g. Path("data/my_file.shp") -->
             output_path: Path where the tool will write its output.
-                         <!-- PLACEHOLDER: replace with your desired
-                              output path, e.g. Path("output/result.geojson") -->
             verbose: Set to ``True`` to enable debug-level console
                      logging during the run.  Defaults to ``False``.
         """

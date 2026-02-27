@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Generate self-contained Leaflet.js map widgets from a typed configuration object.",
   "license": "MIT",
-  "author": "YOUR_NAME <YOUR_EMAIL@example.com>",
+  "author": "matthew-lottly",
   "keywords": ["gis", "leaflet", "map-widget", "geospatial"],
   "type": "module",
   "files": ["dist", "src"],

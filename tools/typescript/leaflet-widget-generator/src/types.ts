@@ -2,8 +2,6 @@
  * Leaflet Widget Generator — Type Definitions
  * =============================================
  * All configuration types consumed by {@link LeafletWidgetGenerator}.
- * Every property has a JSDoc comment explaining its purpose and any
- * placeholder values the user should replace.
  */
 
 /** Supported Leaflet tile provider presets. */
@@ -15,59 +13,31 @@ export type TileProvider =
 
 /** Initial map view configuration. */
 export interface ViewConfig {
-  /**
-   * Initial map centre latitude.
-   * <!-- PLACEHOLDER: Replace with your area of interest latitude,
-   *      e.g. 51.505 for London, 40.7128 for New York, -33.8688 for Sydney -->
-   */
+  /** Initial map centre latitude (e.g. `51.505` for London). */
   lat: number;
 
-  /**
-   * Initial map centre longitude.
-   * <!-- PLACEHOLDER: Replace with your area of interest longitude,
-   *      e.g. -0.09 for London, -74.006 for New York, 151.2093 for Sydney -->
-   */
+  /** Initial map centre longitude (e.g. `-0.09` for London). */
   lng: number;
 
-  /**
-   * Initial zoom level (1 = world, 18 = building level).
-   * <!-- PLACEHOLDER: 13 is a good city-district zoom. Range: 1–18 -->
-   */
+  /** Initial zoom level (1 = world, 18 = building level). */
   zoom: number;
 }
 
 /** A GeoJSON layer to add on top of the basemap. */
 export interface GeoJsonLayerConfig {
-  /**
-   * URL to a GeoJSON file or API endpoint.
-   * <!-- PLACEHOLDER: Replace with your GeoJSON endpoint, e.g.
-   *      "https://example.com/data/features.geojson"
-   *      or use a data: URI for inline data -->
-   */
+  /** URL to a GeoJSON file or API endpoint. */
   url: string;
 
-  /**
-   * Human-readable layer name shown in the layer control.
-   * <!-- PLACEHOLDER: Replace with a descriptive name, e.g. "Hospitals" -->
-   */
+  /** Human-readable layer name shown in the layer control. */
   name: string;
 
-  /**
-   * Hex fill colour for polygon/point features.
-   * <!-- PLACEHOLDER: Any CSS colour string, e.g. "#e74c3c", "rgba(0,0,0,0.5)" -->
-   */
+  /** Hex fill colour for polygon/point features. */
   fillColor?: string;
 
-  /**
-   * Hex stroke colour for polygon/point features.
-   * <!-- PLACEHOLDER: e.g. "#c0392b" -->
-   */
+  /** Hex stroke colour for polygon/point features. */
   color?: string;
 
-  /**
-   * Stroke weight in pixels.
-   * <!-- PLACEHOLDER: 1-4 for thin outlines, 5+ for thick boundaries -->
-   */
+  /** Stroke weight in pixels. */
   weight?: number;
 
   /** Initial visibility of this layer (default: true). */
@@ -76,14 +46,11 @@ export interface GeoJsonLayerConfig {
 
 /** Configuration for a single map marker. */
 export interface MarkerConfig {
-  /** Marker latitude. <!-- PLACEHOLDER: Decimal degrees, e.g. 51.505 --> */
+  /** Marker latitude (decimal degrees). */
   lat: number;
-  /** Marker longitude. <!-- PLACEHOLDER: Decimal degrees, e.g. -0.09 --> */
+  /** Marker longitude (decimal degrees). */
   lng: number;
-  /**
-   * Popup HTML content shown when the marker is clicked.
-   * <!-- PLACEHOLDER: Any HTML string, e.g. "<b>My Location</b><br>Pop. 10,000" -->
-   */
+  /** Popup HTML content shown when the marker is clicked. */
   popupHtml?: string;
 }
 
@@ -99,51 +66,28 @@ export interface ScaleControlConfig {
 
 /** Full configuration object for {@link LeafletWidgetGenerator}. */
 export interface WidgetConfig {
-  /**
-   * CSS selector or HTML id for the map container element.
-   * <!-- PLACEHOLDER: Matches the `id` attribute of your map div,
-   *      e.g. "map", "#myMap" — must be a unique id on the page -->
-   */
+  /** CSS selector or HTML id for the map container element. */
   containerId: string;
 
-  /**
-   * Map container height.
-   * <!-- PLACEHOLDER: Any valid CSS height, e.g. "500px", "80vh", "100%" -->
-   */
+  /** Map container height (e.g. `"500px"`, `"80vh"`). */
   height?: string;
 
-  /**
-   * Map container width.
-   * <!-- PLACEHOLDER: Any valid CSS width, e.g. "100%", "800px" -->
-   */
+  /** Map container width (e.g. `"100%"`, `"800px"`). */
   width?: string;
 
   /** Initial view (centre + zoom). */
   view: ViewConfig;
 
-  /**
-   * Tile provider preset.
-   * <!-- PLACEHOLDER: "openstreetmap" | "opentopomap" | "stadia-alidade-smooth" | "custom" -->
-   */
+  /** Tile provider preset. */
   tileProvider?: TileProvider;
 
-  /**
-   * Custom tile URL template (used only when tileProvider = "custom").
-   * <!-- PLACEHOLDER: Tile URL with {z}/{x}/{y} placeholders, e.g.
-   *      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" -->
-   */
+  /** Custom tile URL template (used only when `tileProvider = "custom"`). */
   tileUrl?: string;
 
-  /**
-   * Custom tile attribution (used only when tileProvider = "custom").
-   * <!-- PLACEHOLDER: e.g. '© <a href="https://openstreetmap.org">OpenStreetMap</a>' -->
-   */
+  /** Custom tile attribution (used only when `tileProvider = "custom"`). */
   tileAttribution?: string;
 
-  /**
-   * Optional Stadia Maps API key (required for Stadia tile layers in production).
-   * <!-- PLACEHOLDER: Get a free key at https://client.stadiamaps.com/ -->
-   */
+  /** Optional Stadia Maps API key (required for Stadia tile layers in production). */
   stadiaApiKey?: string;
 
   /** GeoJSON overlay layers to add on top of the basemap. */
@@ -164,7 +108,6 @@ export interface WidgetConfig {
   /**
    * Whether to generate a self-contained HTML string with Leaflet bundled
    * from CDN (default: false — assumes Leaflet is already on the page).
-   * <!-- PLACEHOLDER: Set to true to get a fully portable HTML snippet -->
    */
   selfContained?: boolean;
 }

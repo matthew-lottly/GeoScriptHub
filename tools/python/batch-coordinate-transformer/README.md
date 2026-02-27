@@ -1,20 +1,12 @@
 # Batch Coordinate Transformer
 
-<!-- PLACEHOLDER ─────────────────────────────────────────────────────────────
-     Replace YOUR_GITHUB_USERNAME with your actual GitHub username in the
-     badge URLs below.
-─────────────────────────────────────────────────────────────────────────── -->
-[![CI — Python](https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/actions/workflows/ci-python.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/actions/workflows/ci-python.yml)
+[![CI — Python](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml/badge.svg)](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../../../LICENSE)
 
 > Reproject coordinate pairs in a CSV file from **any source CRS** to **any target CRS** — in one command.
 
-<!-- PLACEHOLDER ─────────────────────────────────────────────────────────────
-     Replace the img src below with an animated GIF showing the tool running.
-     Recommended: record a short terminal session with asciinema or ScreenToGif.
-     Save the GIF as docs/assets/demo-batch-coord-transformer.gif in the repo root.
-─────────────────────────────────────────────────────────────────────────── -->
+
 <!-- ![Demo](../../../../docs/assets/demo-batch-coord-transformer.gif) -->
 
 ---
@@ -116,16 +108,16 @@ from pathlib import Path
 from src.batch_coord_transformer.transformer import CoordinateTransformer, TransformerConfig
 
 config = TransformerConfig(
-    from_crs="EPSG:32614",   # PLACEHOLDER: your source CRS
-    to_crs="EPSG:4326",      # PLACEHOLDER: your target CRS
-    lon_col="easting",       # PLACEHOLDER: your X column name
-    lat_col="northing",      # PLACEHOLDER: your Y column name
+    from_crs="EPSG:32614",
+    to_crs="EPSG:4326",
+    lon_col="easting",
+    lat_col="northing",
     output_format="geojson",
 )
 
 tool = CoordinateTransformer(
-    input_path=Path("data/survey_points.csv"),   # PLACEHOLDER: your input path
-    output_path=Path("output/result.geojson"),   # PLACEHOLDER: your output path
+    input_path=Path("data/survey_points.csv"),
+    output_path=Path("output/result.geojson"),
     config=config,
 )
 tool.run()
@@ -142,12 +134,12 @@ Every parameter you may need to change is listed below.
 
 | Parameter | Type | Default | Description | Example |
 |-----------|------|---------|-------------|---------|
-| `--input` / `input_path` | `Path` | — | **PLACEHOLDER** — Path to your input CSV file | `data/points.csv` |
-| `--output` / `output_path` | `Path` | — | **PLACEHOLDER** — Path for the output file.  Parent dirs are auto-created. | `output/points_wgs84.csv` |
-| `--from-crs` / `from_crs` | `str` | — | **PLACEHOLDER** — EPSG code or PROJ/WKT string of your *input* data's CRS | `EPSG:32614` |
-| `--to-crs` / `to_crs` | `str` | — | **PLACEHOLDER** — EPSG code or PROJ/WKT string of the *desired output* CRS | `EPSG:4326` |
-| `--lon-col` / `lon_col` | `str` | `"longitude"` | **PLACEHOLDER** — Column name holding X / longitude / easting values | `"easting"` |
-| `--lat-col` / `lat_col` | `str` | `"latitude"` | **PLACEHOLDER** — Column name holding Y / latitude / northing values | `"northing"` |
+| `--input` / `input_path` | `Path` | — | Path to your input CSV file | `data/points.csv` |
+| `--output` / `output_path` | `Path` | — | Path for the output file. Parent dirs are auto-created. | `output/points_wgs84.csv` |
+| `--from-crs` / `from_crs` | `str` | — | EPSG code or PROJ/WKT string of the input CRS | `EPSG:32614` |
+| `--to-crs` / `to_crs` | `str` | — | EPSG code or PROJ/WKT string of the desired output CRS | `EPSG:4326` |
+| `--lon-col` / `lon_col` | `str` | `"longitude"` | Column name holding X / longitude / easting values | `"easting"` |
+| `--lat-col` / `lat_col` | `str` | `"latitude"` | Column name holding Y / latitude / northing values | `"northing"` |
 | `--format` / `output_format` | `"csv"` \| `"geojson"` | `"csv"` | Output file format | `"geojson"` |
 | `--verbose` / `verbose` | `bool` | `False` | Print DEBUG-level log messages | `True` |
 

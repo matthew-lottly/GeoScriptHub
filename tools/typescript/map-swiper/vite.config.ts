@@ -6,7 +6,6 @@ export default defineConfig({
     lib: {
       entry: "src/index.ts",
       name: "MapSwiper",
-      // PLACEHOLDER: adjust the output filename prefix if you rename this package
       fileName: "map-swiper",
       formats: ["es", "umd"],
     },

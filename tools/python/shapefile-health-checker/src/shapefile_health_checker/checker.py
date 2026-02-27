@@ -353,15 +353,9 @@ class ShapefileHealthChecker(GeoTool):
 
     Args:
         input_path: Path to the vector file to check.
-                    <!-- PLACEHOLDER: path to your Shapefile, GeoJSON, or
-                         GeoPackage, e.g. Path("data/parcels.shp") -->
         output_path: Path where the report will be written.
-                     <!-- PLACEHOLDER: desired report output path,
-                          e.g. Path("output/health_report.md") -->
-        report_format: Output format for the report.  ``"markdown"`` or
+        report_format: Output format for the report: ``"markdown"`` or
                        ``"html"``.
-                       <!-- PLACEHOLDER: choose "markdown" for plain-text
-                            reports or "html" for browser-viewable reports -->
         checks: List of :class:`CheckStrategy` instances to run.  Defaults
                 to the six built-in checks.  Pass a custom list to skip or
                 add checks.

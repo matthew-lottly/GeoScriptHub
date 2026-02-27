@@ -66,8 +66,6 @@ def _parse_index_list(raw: str) -> list[str]:
     required=False,
     type=click.Path(exists=True, dir_okay=False),
     default=None,
-    # PLACEHOLDER: Path to the red band GeoTIFF
-    # Landsat 8/9: B4.TIF  |  Sentinel-2: B04.tif
     help="Red band file path (required for NDVI, SAVI, EVI).",
 )
 @click.option(
@@ -76,8 +74,6 @@ def _parse_index_list(raw: str) -> list[str]:
     required=False,
     type=click.Path(exists=True, dir_okay=False),
     default=None,
-    # PLACEHOLDER: Path to the near-infrared band GeoTIFF
-    # Landsat 8/9: B5.TIF  |  Sentinel-2: B08.tif
     help="NIR band file path (required for NDVI, NDWI, SAVI, EVI).",
 )
 @click.option(
@@ -86,8 +82,6 @@ def _parse_index_list(raw: str) -> list[str]:
     required=False,
     type=click.Path(exists=True, dir_okay=False),
     default=None,
-    # PLACEHOLDER: Path to the green band GeoTIFF
-    # Landsat 8/9: B3.TIF  |  Sentinel-2: B03.tif
     help="Green band file path (required for NDWI).",
 )
 @click.option(
@@ -96,8 +90,6 @@ def _parse_index_list(raw: str) -> list[str]:
     required=False,
     type=click.Path(exists=True, dir_okay=False),
     default=None,
-    # PLACEHOLDER: Path to the blue band GeoTIFF
-    # Landsat 8/9: B2.TIF  |  Sentinel-2: B02.tif
     help="Blue band file path (required for EVI).",
 )
 @click.option(
@@ -105,8 +97,6 @@ def _parse_index_list(raw: str) -> list[str]:
     "index_list",
     default="NDVI",
     show_default=True,
-    # PLACEHOLDER: Comma-separated list of indices to compute
-    # Valid values: NDVI, NDWI, SAVI, EVI — or "ALL" to compute every available index
     help="Comma-separated indices to compute (NDVI, NDWI, SAVI, EVI) or ALL.",
 )
 @click.option(
@@ -115,16 +105,13 @@ def _parse_index_list(raw: str) -> list[str]:
     default=0.5,
     show_default=True,
     type=float,
-    # PLACEHOLDER: SAVI soil brightness correction factor L
-    # 0.25 = dense vegetation, 0.5 = intermediate (default), 1.0 = very sparse
-    help="SAVI soil brightness correction factor L (default 0.5).",
+    help="SAVI soil brightness correction factor L.",
 )
 @click.option(
     "--output-dir",
     "output_dir",
     default="output",
     show_default=True,
-    # PLACEHOLDER: Directory where output GeoTIFFs will be written, one per index
     help="Directory for output GeoTIFF files.",
 )
 @click.option(

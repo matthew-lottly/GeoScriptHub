@@ -46,18 +46,14 @@ class MonitorScheduler:
     Args:
         monitor: The configured :class:`OSMChangeMonitor` to poll.
         interval_minutes: How often to poll, in minutes.
-                          <!-- PLACEHOLDER: Set to your desired poll frequency,
-                               e.g. 30 for every 30 minutes.
-                               Note: Overpass public API asks for ≥ 1 minute intervals. -->
         run_immediately: If ``True`` (default), execute one poll immediately on
                          :meth:`start` before scheduling subsequent runs.
-                         <!-- PLACEHOLDER: set to False to skip the initial poll -->
     """
 
     def __init__(
         self,
         monitor: OSMChangeMonitor,
-        interval_minutes: int = 60,  # PLACEHOLDER: adjust to your poll frequency
+        interval_minutes: int = 60,
         *,
         run_immediately: bool = True,
     ) -> None:

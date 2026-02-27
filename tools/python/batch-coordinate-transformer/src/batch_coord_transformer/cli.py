@@ -41,42 +41,24 @@ from shared.python.exceptions import GeoScriptHubError
     "input_path",
     required=True,
     type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
-    help=(
-        "Path to the input CSV file.\n"
-        # PLACEHOLDER: replace with your actual input file path when running manually
-        "Example: --input data/survey_points.csv"
-    ),
+    help="Path to the input CSV file.",
 )
 @click.option(
     "--output", "-o",
     "output_path",
     required=True,
     type=click.Path(file_okay=True, dir_okay=False, path_type=Path),
-    help=(
-        "Path for the output file.  Parent directories are created if absent.\n"
-        # PLACEHOLDER: replace with your desired output path
-        "Example: --output output/survey_wgs84.csv"
-    ),
+    help="Path for the output file. Parent directories are created if absent.",
 )
 @click.option(
     "--from-crs",
     required=True,
-    help=(
-        "Source coordinate reference system.\n"
-        # PLACEHOLDER: replace with the CRS of your input data
-        # Common values: EPSG:4326 (WGS84), EPSG:32614 (UTM Zone 14N),
-        #                EPSG:4269 (NAD83), EPSG:3857 (Web Mercator)
-        "Example: --from-crs EPSG:32614"
-    ),
+    help="Source coordinate reference system (e.g. EPSG:32614).",
 )
 @click.option(
     "--to-crs",
     required=True,
-    help=(
-        "Target coordinate reference system.\n"
-        # PLACEHOLDER: replace with the CRS you want the output in
-        "Example: --to-crs EPSG:4326"
-    ),
+    help="Target coordinate reference system (e.g. EPSG:4326).",
 )
 # ---------------------------------------------------------------------------
 # Optional arguments
@@ -85,21 +67,13 @@ from shared.python.exceptions import GeoScriptHubError
     "--lon-col",
     default="longitude",
     show_default=True,
-    help=(
-        "Column name containing X / longitude / easting values.\n"
-        # PLACEHOLDER: replace with the actual column name in your CSV
-        "Example: --lon-col easting"
-    ),
+    help="Column name containing X / longitude / easting values.",
 )
 @click.option(
     "--lat-col",
     default="latitude",
     show_default=True,
-    help=(
-        "Column name containing Y / latitude / northing values.\n"
-        # PLACEHOLDER: replace with the actual column name in your CSV
-        "Example: --lat-col northing"
-    ),
+    help="Column name containing Y / latitude / northing values.",
 )
 @click.option(
     "--format",

@@ -31,22 +31,14 @@ from shared.python.exceptions import GeoScriptHubError
     "input_path",
     required=True,
     type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
-    help=(
-        "Path to the vector file to check.\n"
-        # PLACEHOLDER: replace with your actual input file path
-        "Example: --input data/parcels.shp"
-    ),
+    help="Path to the vector file to check.",
 )
 @click.option(
     "--output", "-o",
     "output_path",
     required=True,
     type=click.Path(file_okay=True, dir_okay=False, path_type=Path),
-    help=(
-        "Path for the output report file.\n"
-        # PLACEHOLDER: replace with your desired output path
-        "Example: --output output/health_report.md"
-    ),
+    help="Path for the output report file.",
 )
 @click.option(
     "--format",
@@ -54,24 +46,15 @@ from shared.python.exceptions import GeoScriptHubError
     type=click.Choice(["markdown", "html"], case_sensitive=False),
     default="markdown",
     show_default=True,
-    help=(
-        "Report output format.\n"
-        # PLACEHOLDER: choose 'markdown' for a .md file or 'html' for a
-        #              browser-viewable .html file
-    ),
+    help="Report output format.",
 )
 @click.option(
     "--skip-check",
     "skip_checks",
     multiple=True,
-    help=(
-        "Name of a check to skip (can be repeated).\n"
-        "Available check names: null-geometry, self-intersection, "
-        "duplicate-features, crs-presence, encoding, extent-sanity\n"
-        # PLACEHOLDER: add --skip-check duplicate-features if your data
-        #              is known to have intentional duplicate geometries
-        "Example: --skip-check duplicate-features --skip-check encoding"
-    ),
+    help="Name of a check to skip (can be repeated). "
+         "Available: null-geometry, self-intersection, "
+         "duplicate-features, crs-presence, encoding, extent-sanity",
 )
 @click.option(
     "--verbose", "-v",

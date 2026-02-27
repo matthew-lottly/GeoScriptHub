@@ -1,13 +1,11 @@
 # Raster Band Stats Reporter
 
-<!-- PLACEHOLDER: replace YOUR_GITHUB_USERNAME with your actual GitHub username -->
-[![CI — Python](https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/actions/workflows/ci-python.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/GeoScriptHub/actions/workflows/ci-python.yml)
+[![CI — Python](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml/badge.svg)](https://github.com/matthew-lottly/GeoScriptHub/actions/workflows/ci-python.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../../../LICENSE)
 
 > Compute **per-band statistics** (min, max, mean, std dev) for any GeoTIFF in one command — export to JSON or CSV.
 
-<!-- PLACEHOLDER: replace with a demo GIF of the tool running -->
 <!-- ![Demo](../../../../docs/assets/demo-raster-band-stats.gif) -->
 
 ---
@@ -85,13 +83,13 @@ from pathlib import Path
 from src.raster_band_stats.stats import BandStatsReporter, BandStatsConfig
 
 config = BandStatsConfig(
-    output_format="json",         # PLACEHOLDER: "json" or "csv"
-    bands=[3, 4],                 # PLACEHOLDER: list of 1-based band indices, or None for all
+    output_format="json",
+    bands=[3, 4],
 )
 
 tool = BandStatsReporter(
-    input_path=Path("data/landsat.tif"),    # PLACEHOLDER: path to your raster
-    output_path=Path("output/stats.json"),  # PLACEHOLDER: path for output file
+    input_path=Path("data/landsat.tif"),
+    output_path=Path("output/stats.json"),
     config=config,
 )
 tool.run()
@@ -106,12 +104,12 @@ for band in tool.band_stats:
 
 ## Configuration Reference
 
-| Parameter | Type | Default | Description | Placeholder |
-|-----------|------|---------|-------------|-------------|
-| `--input` / `input_path` | `Path` | — | Path to the input raster file | **PLACEHOLDER** — path to your `.tif`, `.img`, or other rasterio-supported file |
-| `--output` / `output_path` | `Path` | — | Path for the output stats file | **PLACEHOLDER** — `.json` for JSON, `.csv` for CSV |
-| `--format` / `output_format` | `str` | `"json"` | Output format | **PLACEHOLDER** — `"json"` or `"csv"` |
-| `--bands` / `bands` | `str` (CSV) | all | Band indices to process (1-based) | **PLACEHOLDER** — e.g. `1,4` for first and fourth bands<br>Landsat 8 Red=4, NIR=5; Sentinel-2 Red=4, NIR=8 |
+| Parameter | Type | Default | Description | Example |
+|-----------|------|---------|-------------|--------|
+| `--input` / `input_path` | `Path` | — | Path to the input raster file | `data/landsat.tif` |
+| `--output` / `output_path` | `Path` | — | Path for the output stats file | `output/stats.json` |
+| `--format` / `output_format` | `str` | `"json"` | Output format (`"json"` or `"csv"`) | `"csv"` |
+| `--bands` / `bands` | `str` (CSV) | all | Band indices to process (1-based) | `1,4` — Landsat 8 Red=4, NIR=5; Sentinel-2 Red=4, NIR=8 |
 | `--verbose` | `bool` | `False` | Debug logging | Pass `-v` for per-band debug output |
 
 ### Common Satellite Band Numbering
@@ -163,12 +161,10 @@ band_index,min,max,mean,std_dev,valid_pixels,nodata_pixels,nodata_value
 # Landsat 8 scene — all 11 bands
 geo-raster-stats --input LC08_band.tif --output stats.json
 
-# PLACEHOLDER: replace LC08_band.tif with your actual Landsat file name
 # Landsat 8 band file naming convention: LC08_L2SP_*_B1.TIF through B11.TIF
 
 # Sentinel-2 — analyze only the 10m bands
 geo-raster-stats --input S2A_MSI.tif --output stats.csv --format csv --bands 2,3,4,8
-# PLACEHOLDER: replace S2A_MSI.tif with your actual Sentinel-2 filename
 ```
 
 ---
