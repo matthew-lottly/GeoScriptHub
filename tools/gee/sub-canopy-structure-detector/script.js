@@ -151,9 +151,27 @@ if (Math.abs(weightSum - 1.0) > 0.001) {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Load Sentinel-1 GRD (Ground Range Detected) IW-mode images
- * with both VV and VH polarisations.  GRD is already terrain-
- * corrected and calibrated to σ⁰ (backscatter coefficient in dB).
+ * WHY SENTINEL-1 GRD?
+ * GRD (Ground Range Detected) is the pre-processed, multi-looked
+ * product that is already orthorectified and calibrated to σ⁰
+ * (sigma-nought — the normalised backscatter coefficient, in dB).
+ * It is the standard input for land-surface analysis.  The
+ * alternative (SLC) contains phase information useful for
+ * interferometry but is unnecessary here and is harder to work with.
+ *
+ * WHY IW MODE?
+ * Interferometric Wide (IW) swath mode covers a ~250 km swath at
+ * 10 m × 10 m posted spacing — the best combination of coverage
+ * and resolution available from Sentinel-1 over land.
+ *
+ * WHY VV AND VH?
+ * VV (vertical transmit, vertical receive) is sensitive to surface
+ * roughness and vertical structures — strong returns from building
+ * walls via double-bounce.
+ * VH (vertical transmit, horizontal receive) is sensitive to volume
+ * scattering in vegetation canopy.  The ratio VH/VV separates
+ * canopy scatter (high VH) from double-bounce scatter (high VV).
+ * Both polarisations together are required for Indicators 1–3.
  */
 var s1 = ee.ImageCollection('COPERNICUS/S1_GRD')
   .filterBounds(AOI)
@@ -172,10 +190,22 @@ s1 = s1.select(['VV', 'VH']);
 print('Sentinel-1 SAR images:', s1.size());
 
 /**
- * Convert dB → linear power for statistical operations.
- * Statistics (mean, stdDev, CoV) are only valid in linear space.
+ * WHY convert from dB to linear before computing statistics?
  *
- *   linear = 10^(dB / 10)
+ * Sentinel-1 GRD values are stored in decibels (dB), a logarithmic
+ * scale: dB = 10 · log₁₀(linear).  This is convenient for display
+ * but breaks arithmetic:
+ *
+ *   • The mean of dB values ≠ dB of the mean linear values.
+ *   • Standard deviation in dB is not the same as the physical
+ *     variation in radar cross-section.
+ *   • The Coefficient of Variation (stdDev / mean) is only
+ *     physically meaningful in linear power space.
+ *
+ * Conversion:  linear = 10^(dB / 10)
+ *
+ * Rule of thumb: always go to linear for statistics, back to dB
+ * for display or z-score comparisons (Section 7).
  */
 function dbToLinear(image) {
   var lin = ee.Image(10).pow(image.divide(10));
@@ -366,12 +396,36 @@ var s2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
 print('Sentinel-2 optical images:', s2.size());
 
 /**
- * Cloud mask using the Scene Classification Layer (SCL).
- * Removes cloud shadow (3), cloud medium (8), cloud high (9),
- * and cirrus (10).
+ * Cloud masking using the Sentinel-2 Scene Classification Layer (SCL).
+ *
+ * The SCL is a 20 m per-pixel map produced by ESA's Sen2Cor
+ * atmospheric correction processor.  Each pixel is assigned one
+ * of 12 classes:
+ *
+ *   SCL  | Class
+ *   ─────┼─────────────────────────────────────────
+ *     0  | No data / saturated pixels
+ *     1  | Saturated or defective
+ *     2  | Dark area (terrain shadow)
+ *     3  | Cloud shadow                  ← masked
+ *     4  | Vegetation (clear)
+ *     5  | Not-vegetated / bare soil     (clear)
+ *     6  | Water                         (clear)
+ *     7  | Unclassified                  (clear)
+ *     8  | Cloud – medium probability    ← masked
+ *     9  | Cloud – high probability      ← masked
+ *    10  | Thin cirrus                   ← masked
+ *    11  | Snow / ice                    (clear)
+ *
+ * WHY mask cloud shadow (class 3)?
+ * Cloud shadows have unusually low reflectance in all bands,
+ * causing false-high NDBI values that could mimic built-up signal.
+ * Removing them prevents shadow pixels from masquerading as
+ * building micro-anomalies in Indicator 5.
  */
 function maskS2Clouds(image) {
   var scl = image.select('SCL');
+  // A pixel is 'clear' only if it is not shadow, cloud, or cirrus
   var clear = scl.neq(3).and(scl.neq(8)).and(scl.neq(9)).and(scl.neq(10));
   return image.updateMask(clear);
 }
@@ -413,6 +467,17 @@ var ndbiAnomaly = ndbi.subtract(ndbiLocal)
  * layover produce strong backscatter anomalies that look like
  * buildings but are purely topographic artefacts.
  */
+// WHY restrict to forest?
+// If we ran detection over all land, every urban area would light up
+// as a false positive — obviously there are buildings in cities.
+// The forest mask limits detections to pixels that appear forested
+// in the optical composite, ensuring we only flag *hidden* structures.
+//
+// NDVI >= FOREST_NDVI_THRESHOLD  → dense enough canopy to potentially
+//                                   hide a structure
+// NDWI <  WATER_NDWI_THRESHOLD   → exclude water bodies where SAR
+//                                   specular reflection also triggers
+//                                   anomalously stable, low backscatter
 var forestMask = ndvi.gte(FOREST_NDVI_THRESHOLD)
   .and(ndwi.lt(WATER_NDWI_THRESHOLD))
   .rename('forest');
@@ -698,7 +763,16 @@ Map.addLayer(
 );
 
 // ── Individual SAR indicators (off by default) ─────────────────────
+// Tip: toggle these one at a time in the Layers panel to understand
+// which indicator is driving detections in your AOI.
+// True positives (real buildings) should show bright spots across
+// multiple indicators.  Bright spots in only one indicator are more
+// likely to be noise or a false positive for that specific mechanism.
 
+// ① Stability: bright = persistent scatterer, dark = fluctuating.
+//   Expect: point-like bright spots in built areas, diffuse dark
+//   background in forest.  River sandbars also appear bright (stable
+//   specular reflection) — these should be removed by the forest mask.
 Map.addLayer(
   stability.clip(AOI),
   { min: 0.3, max: 1, palette: ['black', 'yellow', 'white'] },
@@ -706,6 +780,10 @@ Map.addLayer(
   false
 );
 
+// ② Double-bounce: bright (yellow) = low VH/VV ratio = building-like.
+//   Expect: compact bright clusters at structures, darker canopy background.
+//   Open fields also show low VH/VV (surface scattering), but are
+//   excluded by the forest mask.
 Map.addLayer(
   doubleBounceScore.clip(AOI),
   { min: 0, max: 1,
@@ -714,6 +792,9 @@ Map.addLayer(
   false
 );
 
+// ③ Texture: bright = high GLCM contrast = geometric regular pattern.
+//   Expect: noisy background texture in uniform canopy; bright edges
+//   at built structures where sharp backscatter gradients exist.
 Map.addLayer(
   textureScore.clip(AOI),
   { min: 0, max: 1, palette: ['black', 'cyan', 'white'] },
@@ -721,6 +802,10 @@ Map.addLayer(
   false
 );
 
+// ④ Anomaly: bright = local backscatter hotspot.
+//   Expect: isolated bright points where a structure creates a VV
+//   return stronger than the surrounding forest average.
+//   Dense clusters of hotspots may indicate a compound/village.
 Map.addLayer(
   anomalyScore.clip(AOI),
   { min: 0, max: 1, palette: ['black', 'orange', 'red'] },
@@ -728,6 +813,10 @@ Map.addLayer(
   false
 );
 
+// ⑤ NDBI micro-anomaly: faint optical signal from roof/concrete mixing
+//   into the forest canopy pixels.  This is the weakest indicator
+//   (weight 0.10) but adds value at edges where the canopy thins.
+//   Expect: diffuse blobs rather than sharp points.
 Map.addLayer(
   ndbiAnomaly.clip(AOI),
   { min: 0, max: 1, palette: ['black', 'pink', 'magenta'] },
@@ -988,8 +1077,26 @@ Map.add(sitePanel);
  * Chart A — Mean VV backscatter across the FULL AOI over time.
  * Chart B — Mean VV for HIGH-confidence detection zones only.
  *
- * Compare the two: persistent flat lines in Chart B confirm stable
- * scatterers (buildings).  Seasonal curves indicate forest leakage.
+ * HOW TO INTERPRET THE CHARTS:
+ *
+ * Chart A (full AOI):
+ *   • Shows the average SAR response of all forested pixels.
+ *   • Expect seasonal modulation (±1–2 dB) from canopy moisture
+ *     changes and wind-induced leaf angle variation.
+ *   • Very flat = dry-season dominated AOI (minimal vegetation change).
+ *
+ * Chart B (high-confidence detections only):
+ *   • Should look FLATTER than Chart A — persistent scatterers
+ *     (buildings) don't respond to seasons.
+ *   • If Chart B also shows seasonal oscillation at the same
+ *     amplitude as Chart A, the HIGH-confidence pixels are likely
+ *     dominated by forest false positives — consider raising
+ *     THRESH_HIGH or STABILITY_FLOOR.
+ *   • If Chart B is empty / undefined, no HIGH-confidence detections
+ *     were found in the current AOI.
+ *
+ * scale: 100 m keeps chart computation fast; fine detail is not
+ * needed for trend visualisation.
  */
 
 // Chart A: full AOI
@@ -1088,6 +1195,25 @@ print('════════════════════════�
 //  20. HISTOGRAM — structure probability distribution
 // ═══════════════════════════════════════════════════════════════════
 
+/**
+ * HOW TO READ THE HISTOGRAM:
+ *
+ * In a well-behaved run over a forested area with a few hidden
+ * structures you should see:
+ *   • A large peak near 0.0–0.2  → most forest pixels (no structure)
+ *   • A long tail from 0.3–0.7   → mixed/uncertain pixels
+ *   • A small secondary bump near 0.7–1.0 → high-confidence pixels
+ *
+ * If the histogram shows most pixels at high probability (> 0.5),
+ * your thresholds may be too loose — try raising THRESH_HIGH or
+ * widening POL_RATIO_MIN / POL_RATIO_MAX.
+ *
+ * If the histogram shows almost nothing above 0.45, the AOI may
+ * have very few structures OR the SAR data has poor temporal depth
+ * (print s1.size() — you want at least 20–30 images).
+ *
+ * scale: 30 m gives a fast result; change to 10 for full resolution.
+ */
 var probHist = ui.Chart.image.histogram({
   image: hiddenStructureProb.clip(AOI),
   region: AOI,

@@ -5,6 +5,12 @@
 > produces a flood-frequency composite showing how often each pixel
 > was inundated (0–100 %).
 
+![Platform](https://img.shields.io/badge/platform-Google%20Earth%20Engine-4285F4?logo=google&logoColor=white)
+![Sensor](https://img.shields.io/badge/sensor-Sentinel--2%20L2A-00838F)
+![Method](https://img.shields.io/badge/index-NDWI%20McFeeters%201996-2e7d32)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+![Tool](https://img.shields.io/badge/GeoScriptHub-Tool%2012-blueviolet)
+
 | | |
 |---|---|
 | **Platform** | [Google Earth Engine Code Editor](https://code.earthengine.google.com/) |
@@ -16,7 +22,7 @@
 
 ---
 
-## Features
+## ✨ Features
 
 | Capability | Details |
 |---|---|
@@ -31,7 +37,7 @@
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 1. Open the [Google Earth Engine Code Editor](https://code.earthengine.google.com/).
 2. Create a new script and paste the contents of [`script.js`](script.js).
@@ -54,7 +60,7 @@
 
 ---
 
-## How It Works
+## ⚙️ How It Works
 
 ```
 Sentinel-2 L2A Collection
@@ -91,11 +97,14 @@ Visualisation
 
 $$\text{NDWI} = \frac{B3_{\text{Green}} - B8_{\text{NIR}}}{B3_{\text{Green}} + B8_{\text{NIR}}}$$
 
-- **NDWI > 0** → typically water
-- **NDWI < 0** → typically vegetation / bare soil
+- **NDWI > 0.3** → open water (lakes, permanent rivers)
+- **NDWI 0–0.3** → mixed water or wet soil (tidal flats, shallow channels)
+- **NDWI < 0** → land, vegetation, or bare soil
 
-The `NDWI_THRESHOLD` defaults to **0.1** (slightly conservative) to reduce
-shadow false positives common in delta wetlands.
+> **Tip:** The default threshold of **0.1** is slightly conservative for delta
+> wetlands where shadows and turbid water push NDWI just above zero.  Raise
+> to 0.2–0.3 to focus on clearly open water; lower to 0.0 to capture every
+> hint of moisture (more false positives in shadow zones).
 
 ### Flood Frequency
 
@@ -107,7 +116,7 @@ and $\text{valid}_i$ is 1 if the pixel was cloud-free.
 
 ---
 
-## Study Area
+## 🗺️ Study Area
 
 The default AOI covers the lower Mississippi River Delta from the
 birdfoot passes northward, roughly 10 miles inland from the Gulf coast:
@@ -125,24 +134,38 @@ Passes junction.
 
 ---
 
-## Colour Palette
+## 🎨 Colour Palette & Interpretation Guide
 
-| Frequency | Colour | Meaning |
-|---|---|---|
-| 0 % | `#ffffcc` light yellow | Never classified as water |
-| ~17 % | `#c7e9b4` light green | Rare inundation |
-| ~33 % | `#7fcdbb` aqua | Occasional flooding |
-| ~50 % | `#41b6c4` teal | Seasonal flooding |
-| ~67 % | `#2c7fb8` blue | Frequently inundated |
-| 100 % | `#253494` dark blue | Permanent water body |
+| Frequency | Colour | Hex | Interpretation |
+|---|---|---|---|
+| 0 % | 🟡 Light yellow | `#ffffcc` | High ground — never classified as water |
+| ~17 % | 🟢 Light green | `#c7e9b4` | Rare inundation — seasonal marsh margin |
+| ~33 % | 🩵 Aqua | `#7fcdbb` | Occasional flooding — backswamp / low levee |
+| ~50 % | 🔵 Teal | `#41b6c4` | Seasonal flooding — periodically inundated floodplain |
+| ~67 % | 🔵 Blue | `#2c7fb8` | Frequently inundated — semi-permanent wetland |
+| 100 % | 🟣 Dark blue | `#253494` | Permanent open water — main channel / bay |
 
 ---
 
-## Exporting
+## 📈 Reading the Time-Series Chart
+
+The console chart plots **mean NDWI over the AOI** through time.
+Here is what to look for:
+
+| Pattern | What it means |
+|---|---|
+| Regular seasonal waves | Normal — wetter winters, drier summers |
+| Sharp upward spikes | Flood events: hurricanes, extreme precipitation |
+| Rising multi-year trend | Possible wetland expansion or land subsidence |
+| Flat, no seasonality | Very arid AOI or insufficient cloud-free images |
+| Gaps in the trace | Periods of persistent cloud cover — no clear images passed the filter |
+
+---
+
+## 💾 Exporting
 
 Uncomment the `Export.image.toDrive` block at the bottom of the script
-to save the flood-frequency raster as a 10 m GeoTIFF to your Google
-Drive:
+to save the flood-frequency raster as a 10 m GeoTIFF to your Google Drive:
 
 ```js
 Export.image.toDrive({
@@ -156,9 +179,24 @@ Export.image.toDrive({
 });
 ```
 
+> **QGIS tip:** Import the GeoTIFF and apply a Singleband Pseudocolour
+> renderer with the same YlGnBu hex values to reproduce the GEE view exactly.
+
 ---
 
-## Requirements
+## ⚠️ Known Limitations
+
+| Limitation | Notes |
+|---|---|
+| **Cloud-heavy regions** | Pixels under persistent cloud may have fewer than 5 valid observations — frequency values will be noisy |
+| **Shadow false positives** | Canals in deep forest shade can push NDWI near the threshold; SCL class 3 masking helps but is imperfect |
+| **No SAR fusion** | Optical-only — Sentinel-1 SAR can supplement detection in persistently cloudy areas |
+| **10 m pixel size** | Very narrow streams (< 10 m wide) may not be resolved as water pixels |
+| **Static threshold** | A single global `NDWI_THRESHOLD` may need per-season or per-region tuning |
+
+---
+
+## 📋 Requirements
 
 - A [Google Earth Engine account](https://signup.earthengine.google.com/)
   (free for research, education, and non-commercial use)
@@ -166,17 +204,19 @@ Export.image.toDrive({
 
 ---
 
-## References
+## 📚 References
 
 - McFeeters, S. K. (1996). *The use of the Normalized Difference Water
   Index (NDWI) in the delineation of open water features.* International
   Journal of Remote Sensing, 17(7), 1425–1432.
 - ESA Sentinel-2 L2A product documentation:
   https://sentinels.copernicus.eu/web/sentinel/user-guides/sentinel-2-msi
+- Brewer, C. A. (2003). ColorBrewer: A tool for selecting colour schemes
+  for maps. *The Cartographic Journal*, 40(1), 27–37.
 
 ---
 
-## Related Tools
+## 🔗 Related Tools
 
 | # | Tool | Description |
 |---|---|---|
@@ -192,3 +232,4 @@ Export.image.toDrive({
 | 10 | [Map Swiper](../../../README.md) | Before / after map comparison |
 | 11 | [GeoJSON Diff Viewer](../../../README.md) | Side-by-side GeoJSON comparison |
 | 12 | **NDWI Flood-Frequency Mapper** | ← you are here |
+| 13 | [Sub-Canopy Structure Detector](../sub-canopy-structure-detector/README.md) | SAR–optical fusion for hidden buildings |

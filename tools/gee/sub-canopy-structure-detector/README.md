@@ -6,6 +6,13 @@
 > that are invisible in standard satellite photos — and extracts
 > **vector polygon footprints** with per-building attributes.
 
+![Platform](https://img.shields.io/badge/platform-Google%20Earth%20Engine-4285F4?logo=google&logoColor=white)
+![SAR](https://img.shields.io/badge/sensor-Sentinel--1%20GRD-bf360c)
+![Optical](https://img.shields.io/badge/sensor-Sentinel--2%20L2A-00838F)
+![Method](https://img.shields.io/badge/method-SAR%E2%80%93Optical%20Fusion-6a1b9a)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+![Tool](https://img.shields.io/badge/GeoScriptHub-Tool%2013%20v3.0-blueviolet)
+
 | | |
 |---|---|
 | **Platform** | [Google Earth Engine Code Editor](https://code.earthengine.google.com/) |
@@ -17,7 +24,7 @@
 
 ---
 
-## Why This Is Hard
+## 🤔 Why This Is Hard
 
 Standard building detection relies on **optical imagery** — spectral
 signatures of concrete and metal are easy to separate from vegetation.
@@ -40,7 +47,7 @@ structures.
 
 ---
 
-## Detection Pipeline
+## ⚙️ Detection Pipeline
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -232,7 +239,7 @@ Uncomment `Export.table.toDrive` in section 21 to save footprints as:
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 1. Open the [GEE Code Editor](https://code.earthengine.google.com/).
 2. Create a new script and paste [`script.js`](script.js).
@@ -281,7 +288,7 @@ Uncomment `Export.table.toDrive` in section 21 to save footprints as:
 
 ---
 
-## Map Layers
+## 🗺️ Map Layers
 
 | Layer | Default | Description |
 |---|---|---|
@@ -303,7 +310,7 @@ Uncomment `Export.table.toDrive` in section 21 to save footprints as:
 
 ---
 
-## Use Cases
+## 💡 Use Cases
 
 | Domain | Application |
 |---|---|
@@ -316,7 +323,7 @@ Uncomment `Export.table.toDrive` in section 21 to save footprints as:
 
 ---
 
-## Validation & Testing
+## ✅ Validation & Testing
 
 The script includes a built-in validation system:
 
@@ -381,7 +388,7 @@ where optical-only methods fail.
 
 ---
 
-## Limitations & Caveats
+## ⚠️ Limitations & Caveats
 
 - **C-band penetration is partial.** Very dense multi-layer tropical
   canopy attenuates the signal; L-band SAR (ALOS PALSAR) penetrates
@@ -417,7 +424,7 @@ Uncomment the `Export` blocks in section 21 to save:
 
 ---
 
-## References
+## 📚 References
 
 - Ferretti, A., Prati, C., & Rocca, F. (2001). *Permanent scatterers
   in SAR interferometry.* IEEE TGRS, 39(1), 8–20.
@@ -441,7 +448,7 @@ Uncomment the `Export` blocks in section 21 to save:
 
 ---
 
-## Related Tools
+## 🔗 Related Tools
 
 | # | Tool | Description |
 |---|---|---|
