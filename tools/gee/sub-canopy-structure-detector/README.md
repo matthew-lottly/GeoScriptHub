@@ -3,7 +3,8 @@
 > Google Earth Engine script that fuses **Sentinel-1 C-band SAR** with
 > **Sentinel-2 optical** imagery to locate man-made structures (buildings,
 > rooftops, concrete pads) hidden beneath forest canopy — structures
-> that are invisible in standard satellite photos.
+> that are invisible in standard satellite photos — and extracts
+> **vector polygon footprints** with per-building attributes.
 
 | | |
 |---|---|
@@ -12,7 +13,7 @@
 | **Technique** | Multi-indicator SAR–optical fusion |
 | **Default AOI** | Petén, Guatemala — tropical forest with known hidden settlements |
 | **Licence** | MIT |
-| **Tool #** | 13 · GeoScriptHub |
+| **Tool #** | 13 · GeoScriptHub · v3.0 |
 
 ---
 
@@ -166,6 +167,68 @@ The probability surface is then:
    - **Medium** (≥ 0.45) — possible, needs ground truth
    - **Low** (< 0.45) — weak signal
 5. **Cross-validated** against GHSL (Global Human Settlement Layer)
+6. **Vectorised** into per-building polygon footprints via
+   `reduceToVectors` with area, probability, confidence, and GHSL
+   attributes attached to each polygon
+
+---
+
+## Building Footprint Polygons
+
+Section 14 converts the raster probability surface into **discrete
+vector polygons** — one polygon per contiguous cluster of detected
+pixels.  Each polygon is a candidate hidden building footprint.
+
+### Output Attributes
+
+| Property | Type | Description |
+|---|---|---|
+| `area_m2` | Number | Footprint area in square metres |
+| `prob_mean` | Number (0–1) | Mean fusion probability across footprint |
+| `prob_max` | Number (0–1) | Peak fusion probability within footprint |
+| `confidence` | String | `'HIGH'` / `'MEDIUM'` / `'LOW'` |
+| `ghsl_class` | String | `'known'` (overlaps GHSL) or `'novel'` (SAR-only) |
+| `centroid_lon` | Number | Centroid longitude (decimal degrees) |
+| `centroid_lat` | Number | Centroid latitude (decimal degrees) |
+
+### Pipeline
+
+```
+cleanDetections (≥ THRESH_MEDIUM)
+        ↓
+  reduceToVectors          → one polygon per connected blob
+        ↓
+  reduceRegions (mean)     → attach mean fusion probability
+        ↓
+  reduceRegions (max)      → attach max fusion probability
+        ↓
+  reduceRegions (ghsl)     → attach GHSL built-up fraction
+        ↓
+  .map()                   → compute area, centroid, labels
+        ↓
+  filter area ≥ MIN_FOOTPRINT_AREA
+        ↓
+  styled FeatureCollection  → HIGH=red, MEDIUM=orange on map
+```
+
+### Map Styling
+
+Footprints are colour-coded by confidence:
+
+- 🟥 **Red** (`#ff2211`) — HIGH-confidence hidden structures
+- 🟧 **Orange** (`#ff8800`) — MEDIUM-confidence candidates
+
+Use the **GEE Inspector** tab (top-left toolbar) to click any polygon
+and view its full property table.
+
+### Export Formats
+
+Uncomment `Export.table.toDrive` in section 21 to save footprints as:
+
+| Format | Output | Use case |
+|---|---|---|
+| **GeoJSON** | `Hidden_Building_Footprints.geojson` | QGIS, ArcGIS, Leaflet |
+| **CSV** | `Hidden_Building_Footprints_CSV.csv` | Excel, field survey matching |
 
 ---
 
@@ -209,6 +272,7 @@ The probability surface is then:
 | `W_OPTICAL` | `0.10` | Fusion weight — optical NDBI |
 | `THRESH_HIGH` | `0.65` | High-confidence floor |
 | `THRESH_MEDIUM` | `0.45` | Medium-confidence floor |
+| `MIN_FOOTPRINT_AREA` | `80` | Minimum footprint size (m²) — smaller blobs discarded as noise |
 | `ORBIT_DIRECTION` | `'ASCENDING'` | S1 orbit pass: `'ASCENDING'`, `'DESCENDING'`, or `'BOTH'` |
 | `SLOPE_THRESHOLD` | `15` | Max terrain slope (°) — steeper pixels excluded |
 | `POL_RATIO_MIN` | `0.02` | Min VH/VV for double-bounce normalisation |
@@ -234,6 +298,7 @@ The probability surface is then:
 | **GHSL Built-up in Forest** | off | Cyan — GHSL reference built-up under canopy |
 | **✓ Confirmed** | off | Green — our detection overlaps GHSL |
 | **★ Novel Detection** | off | Magenta — our detection, not in GHSL |
+| **★ Building Footprints** | ON | Red (HIGH) / Orange (MEDIUM) polygons with attributes |
 | **Study Area Boundary** | ON | Cyan outline |
 
 ---
@@ -336,8 +401,14 @@ where optical-only methods fail.
 
 ## Exporting
 
-Uncomment the `Export.image.toDrive` blocks at the bottom of the script
-to save:
+Uncomment the `Export` blocks in section 21 to save:
+
+### Vector (Building Footprints)
+
+- **Footprints GeoJSON** — polygon FeatureCollection with all attributes
+- **Footprints CSV** — flat attribute table with centroid coordinates
+
+### Raster
 
 - **Hidden structure probability** (float, 10 m)
 - **Confidence zones** (byte, 10 m) — values 1 / 2 / 3

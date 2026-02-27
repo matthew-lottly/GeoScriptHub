@@ -1,6 +1,6 @@
-/*
+﻿/*
  * ══════════════════════════════════════════════════════════════════════
- *  Sub-Canopy Structure Detector  v2.0
+ *  Sub-Canopy Structure Detector  v3.0
  *  SAR–Optical Fusion for Hidden Building Detection in Forested Areas
  * ══════════════════════════════════════════════════════════════════════
  *
@@ -27,6 +27,7 @@
  *  7. Weighted Fusion → probability surface
  *  8. Confidence Zones (High / Medium / Low)
  *  9. Morphological Cleanup
+ *  10. Building Footprint Extraction → vector polygons
  *
  *  ─── VALIDATION SYSTEM ───────────────────────────────────────────
  *
@@ -112,6 +113,12 @@ var SLOPE_THRESHOLD = 15;
  *  Widen for diverse biomes;  narrow for tropical forest.          */
 var POL_RATIO_MIN = 0.02;
 var POL_RATIO_MAX = 0.30;
+
+/** Minimum footprint area in square metres.  Contiguous detection
+ *  blobs smaller than this are discarded as likely noise.
+ *  Reference sizes: small hut ≈ 20–40 m², typical house ≈ 80–150 m².
+ *  Decrease to catch smaller structures; increase to reduce clutter. */
+var MIN_FOOTPRINT_AREA = 80;
 
 /** Study area — default: tropical forest edge in Petén, Guatemala
  *  (known area with settlements hidden beneath dense canopy).
@@ -545,7 +552,123 @@ var ghslForestCount = ghslInForest.reduceRegion({
 
 
 // ═══════════════════════════════════════════════════════════════════
-//  14. VISUALISATION
+//  14. BUILDING FOOTPRINT EXTRACTION
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Convert the cleaned raster detections to discrete vector polygons —
+ * one polygon per contiguous cluster of detected pixels.
+ *
+ * Pipeline:
+ *   1. Binary mask of all cleaned-detection pixels
+ *   2. reduceToVectors  → raw FeatureCollection of blobs
+ *   3. reduceRegions    → attach mean fusion probability per polygon
+ *   4. reduceRegions    → attach max fusion probability per polygon
+ *   5. reduceRegions    → attach max GHSL built-up value per polygon
+ *   6. .map()           → compute area, centroid, confidence,
+ *                          ghsl_class from the attached properties
+ *   7. Filter out blobs smaller than MIN_FOOTPRINT_AREA
+ *
+ * Output properties per polygon:
+ *   area_m2       — footprint area in square metres
+ *   prob_mean     — mean fusion probability (0–1)
+ *   prob_max      — peak fusion probability (0–1)
+ *   confidence    — 'HIGH' / 'MEDIUM' / 'LOW'
+ *   ghsl_class    — 'known' (overlaps GHSL) or 'novel' (not in GHSL)
+ *   centroid_lon  — centroid longitude (decimal degrees)
+ *   centroid_lat  — centroid latitude  (decimal degrees)
+ *
+ * Performance note: reduceToVectors is compute-intensive.  For AOIs
+ * larger than ~0.5° × 0.5° this step may take 1–3 minutes.  The
+ * tileScale parameter caps memory use; raise it (up to 16) if you
+ * see "too many pixels" errors.
+ */
+
+// Binary mask of every pixel that passed the cleaned detection filter
+var footprintMask = cleanDetections.gte(THRESH_MEDIUM).selfMask();
+
+// ── Step 1: Vectorise connected blobs ────────────────────────────────────
+var rawFootprints = footprintMask.reduceToVectors({
+  reducer: ee.Reducer.countEvery(),
+  geometry: AOI,
+  scale: 10,
+  maxPixels: 1e9,
+  bestEffort: true,
+  geometryType: 'polygon',
+  eightConnected: true,   // diagonal pixels join the same blob
+  tileScale: 4
+});
+
+// ── Step 2: Mean probability per footprint ────────────────────────────────
+// Output property name mirrors the band: 'structure_probability'
+var fpStep2 = hiddenStructureProb.reduceRegions({
+  collection: rawFootprints,
+  reducer: ee.Reducer.mean(),
+  scale: 10,
+  tileScale: 4
+});
+
+// ── Step 3: Max probability per footprint ─────────────────────────────────
+var fpStep3 = hiddenStructureProb.reduceRegions({
+  collection: fpStep2,
+  reducer: ee.Reducer.max().setOutputs(['prob_max']),
+  scale: 10,
+  tileScale: 4
+});
+
+// ── Step 4: Max GHSL value per footprint ──────────────────────────────────
+var fpStep4 = ghsl.reduceRegions({
+  collection: fpStep3,
+  reducer: ee.Reducer.max().setOutputs(['ghsl_max']),
+  scale: 10,
+  tileScale: 4
+});
+
+// ── Step 5: Add computed attributes ──────────────────────────────────────
+var footprintsAll = fpStep4.map(function(feat) {
+  var area     = feat.geometry().area(1);              // m², 1 m tolerance
+  var centroid = feat.geometry().centroid(1).coordinates();
+  var probMean = ee.Number(feat.get('structure_probability'));
+  var probMax  = ee.Number(feat.get('prob_max'));
+  var ghslMax  = ee.Number(feat.get('ghsl_max'));
+
+  // Confidence based on mean probability across the footprint
+  var confClass = ee.Algorithms.If(
+    probMean.gte(THRESH_HIGH),   'HIGH',
+    ee.Algorithms.If(probMean.gte(THRESH_MEDIUM), 'MEDIUM', 'LOW')
+  );
+
+  // known = already in GHSL;  novel = SAR-only detection
+  var ghslClass = ee.Algorithms.If(ghslMax.gt(0), 'known', 'novel');
+
+  return feat
+    .set('area_m2',      area)
+    .set('prob_mean',    probMean)
+    .set('prob_max',     probMax)
+    .set('confidence',   confClass)
+    .set('ghsl_class',   ghslClass)
+    .set('centroid_lon', centroid.get(0))
+    .set('centroid_lat', centroid.get(1));
+});
+
+// ── Step 6: Drop blobs below the minimum area threshold ──────────────────
+var footprints = footprintsAll
+  .filter(ee.Filter.gte('area_m2', MIN_FOOTPRINT_AREA));
+
+print('Building footprints detected :', footprints.size());
+print('Sample footprints (first 5)  :', footprints.limit(5));
+
+// Quick breakdown by confidence / novelty
+var highFP  = footprints.filter(ee.Filter.eq('confidence', 'HIGH'));
+var medFP   = footprints.filter(ee.Filter.eq('confidence', 'MEDIUM'));
+var novelFP = footprints.filter(ee.Filter.eq('ghsl_class', 'novel'));
+print('  HIGH-confidence footprints  :', highFP.size());
+print('  MEDIUM-confidence footprints:', medFP.size());
+print('  Novel footprints (not GHSL) :', novelFP.size());
+
+
+// ═══════════════════════════════════════════════════════════════════
+//  15. VISUALISATION
 // ═══════════════════════════════════════════════════════════════════
 
 Map.centerObject(AOI, 13);
@@ -664,6 +787,35 @@ Map.addLayer(
   false
 );
 
+// ── Building footprint polygons (colour-coded by confidence) ──────────────
+//
+// Each polygon is tagged with area, probability, confidence, ghsl_class.
+// Rendered via .style() so confidence level drives the fill colour:
+//   HIGH   = solid red   (#ff2211)
+//   MEDIUM = solid orange (#ff8800)
+//
+// The styleProperty pattern returns an ee.Image which Map.addLayer
+// draws as a styled vector layer.  Use the Inspector tab to click
+// any polygon and read its property table.
+
+var footprintsStyled = footprints.map(function(f) {
+  var isHigh = ee.String(f.get('confidence')).equals('HIGH');
+  var color  = ee.Algorithms.If(isHigh, 'ff2211', 'ff8800');
+  var fill   = ee.Algorithms.If(isHigh, 'ff221144', 'ff880044');
+  return f.set('style', ee.Dictionary({
+    color:     color,
+    fillColor: fill,
+    width:     2
+  }));
+});
+
+Map.addLayer(
+  footprintsStyled.style({ styleProperty: 'style' }),
+  {},
+  '★ Building Footprints (HIGH=red, MEDIUM=orange)',
+  true
+);
+
 // ── AOI outline ────────────────────────────────────────────────────
 
 Map.addLayer(
@@ -674,7 +826,7 @@ Map.addLayer(
 
 
 // ═══════════════════════════════════════════════════════════════════
-//  15. CLICK-TO-INSPECT DIAGNOSTIC
+//  16. CLICK-TO-INSPECT DIAGNOSTIC
 // ═══════════════════════════════════════════════════════════════════
 
 /**
@@ -748,7 +900,7 @@ function fmt(val) {
 
 
 // ═══════════════════════════════════════════════════════════════════
-//  16. GLOBAL TEST-SITE NAVIGATOR
+//  17. GLOBAL TEST-SITE NAVIGATOR
 // ═══════════════════════════════════════════════════════════════════
 
 /**
@@ -829,7 +981,7 @@ Map.add(sitePanel);
 
 
 // ═══════════════════════════════════════════════════════════════════
-//  17. SAR TIME-SERIES CHARTS
+//  18. SAR TIME-SERIES CHARTS
 // ═══════════════════════════════════════════════════════════════════
 
 /**
@@ -884,11 +1036,11 @@ print(chartHigh);
 
 
 // ═══════════════════════════════════════════════════════════════════
-//  18. CONSOLE SUMMARY
+//  19. CONSOLE SUMMARY
 // ═══════════════════════════════════════════════════════════════════
 
 print('══════════════════════════════════════════════════════');
-print('  Sub-Canopy Structure Detector v2.0 — Results');
+print('  Sub-Canopy Structure Detector v3.0 — Results');
 print('══════════════════════════════════════════════════════');
 print('Study area         : Custom AOI (see map)');
 print('Date range         :', START_DATE, '→', END_DATE);
@@ -918,6 +1070,12 @@ print('  GHSL built-up in forest :', ghslForestCount);
 print('  Confirmed (ours + GHSL) :', agreementCount);
 print('  Novel (ours only)       :', novelCount);
 print('');
+print('Building Footprints:');
+print('  Total footprints         :', footprints.size());
+print('  HIGH-confidence          :', highFP.size());
+print('  MEDIUM-confidence        :', medFP.size());
+print('  Novel footprints (no GHSL):', novelFP.size());
+print('');
 print('How to test:');
 print('  • Click any pixel → per-indicator diagnostic in Console');
 print('  • Toggle indicators ①–⑤ in the Layers panel');
@@ -927,7 +1085,7 @@ print('════════════════════════�
 
 
 // ═══════════════════════════════════════════════════════════════════
-//  19. HISTOGRAM — structure probability distribution
+//  20. HISTOGRAM — structure probability distribution
 // ═══════════════════════════════════════════════════════════════════
 
 var probHist = ui.Chart.image.histogram({
@@ -947,8 +1105,41 @@ print(probHist);
 
 
 // ═══════════════════════════════════════════════════════════════════
-//  20. EXPORT (optional — uncomment to save)
+//  21. EXPORT (optional — uncomment to save)
 // ═══════════════════════════════════════════════════════════════════
+
+
+// ── Export building footprints as GeoJSON vector polygons ───────────────
+//
+// Exports each detected building footprint polygon as a GeoJSON
+// FeatureCollection ready for QGIS / ArcGIS / Leaflet.
+// Properties attached: area_m2, prob_mean, prob_max, confidence,
+//                      ghsl_class, centroid_lon, centroid_lat
+//
+// Export.table.toDrive({
+//   collection: footprints.select(
+//     ['area_m2', 'prob_mean', 'prob_max', 'confidence',
+//      'ghsl_class', 'centroid_lon', 'centroid_lat']
+//   ),
+//   description: 'Hidden_Building_Footprints',
+//   folder: 'GEE_Exports',
+//   fileFormat: 'GeoJSON'
+// });
+
+// ── Export building footprints as CSV attribute table ────────────────
+//
+// Flat table of centroid coordinates and all detection attributes.
+// Useful for spreadsheet analysis and matching with field surveys.
+//
+// Export.table.toDrive({
+//   collection: footprints.select(
+//     ['area_m2', 'prob_mean', 'prob_max', 'confidence',
+//      'ghsl_class', 'centroid_lon', 'centroid_lat']
+//   ),
+//   description: 'Hidden_Building_Footprints_CSV',
+//   folder: 'GEE_Exports',
+//   fileFormat: 'CSV'
+// });
 
 // ── Export probability raster at 10 m ──────────────────────────────
 // Export.image.toDrive({
