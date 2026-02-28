@@ -512,7 +512,7 @@ class HiResAnalyser:
         ``score_mean``, and ``score_max`` attributes.
         """
         _COLS = ["geometry", "area_m2", "score_mean", "score_max"]
-        labeled, n_feats = ndi_label(mask)
+        labeled, n_feats = ndi_label(mask)  # type: ignore[misc]
         if n_feats == 0:
             return gpd.GeoDataFrame(
                 columns=_COLS, geometry="geometry",
@@ -713,9 +713,12 @@ class HiResAnalyser:
         geoms = [(g, 1) for g in gdf.geometry if g is not None]
         if not geoms:
             return np.zeros((H, W), dtype=bool)
-        return rasterize(
+        result = rasterize(
             geoms, out_shape=(H, W), transform=transform, dtype=np.uint8,
-        ).astype(bool)
+        )
+        if result is None:
+            return np.zeros((H, W), dtype=bool)
+        return result.astype(bool)
 
     # ==================================================================
     # Canopy detection

@@ -26,6 +26,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import rasterio
 from rasterio.crs import CRS
+from rasterio.transform import Affine
 from rasterio.warp import reproject, Resampling, calculate_default_transform
 from rasterio.windows import from_bounds
 from rasterio.transform import from_bounds as transform_from_bounds
@@ -62,7 +63,7 @@ class HiResImageryData:
     dem: np.ndarray
 
     # Common grid metadata
-    transform: rasterio.transform.Affine
+    transform: Affine
     crs: CRS
     height: int
     width: int
@@ -367,11 +368,11 @@ class HiResImageryFetcher:
 
         # Ensure correct shape
         if median_vv.shape != (height, width):
-            median_vv = zoom(
+            median_vv = np.asarray(zoom(
                 median_vv,
                 (height / median_vv.shape[0], width / median_vv.shape[1]),
                 order=1,
-            ).astype(np.float32)
+            )).astype(np.float32)
 
         if verbose:
             print(f"  S1 VV median: {median_vv.shape} @ {self.res} m")
@@ -474,7 +475,7 @@ class HiResImageryFetcher:
         if rgbnir.shape[:2] != (height, width):
             from scipy.ndimage import zoom as nd_zoom
             factors = (height / rgbnir.shape[0], width / rgbnir.shape[1], 1)
-            rgbnir = nd_zoom(rgbnir, factors, order=1).astype(np.float32)
+            rgbnir = np.asarray(nd_zoom(rgbnir, factors, order=1)).astype(np.float32)
 
         if verbose:
             print(f"  S2 median RGBNIR: {rgbnir.shape[:2]} @ {self.res} m")
@@ -523,9 +524,9 @@ class HiResImageryFetcher:
         dem = np.nan_to_num(dem, nan=0.0)
 
         if dem.shape != (height, width):
-            dem = zoom(
+            dem = np.asarray(zoom(
                 dem, (height / dem.shape[0], width / dem.shape[1]), order=1,
-            ).astype(np.float32)
+            )).astype(np.float32)
 
         if verbose:
             print(f"  DEM: {dem.shape} @ {self.res} m")

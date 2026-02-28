@@ -357,7 +357,7 @@ class HiResOutputWriter:
                     sp_counts.values(),
                     labels=sp_counts.keys(),
                     autopct="%1.0f%%",
-                    colors=plt.colormaps.get_cmap("Set2").colors,
+                    colors=[plt.colormaps.get_cmap("Set2")(i) for i in range(len(sp_counts))],
                 )
         ax.set_title("Species Group Distribution")
 
