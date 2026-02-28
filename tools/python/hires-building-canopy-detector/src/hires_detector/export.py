@@ -74,6 +74,18 @@ class HiResOutputWriter:
             ("canopy_mask",     self.r.canopy_mask.astype(np.float32)),
             ("species_map",     self.r.species_map.astype(np.float32)),
         ]
+        # Advanced building feature layers (v2)
+        if self.r.ndsm is not None:
+            layers.append(("ndsm", self.r.ndsm))
+        if self.r.glcm_contrast is not None:
+            layers.append(("glcm_contrast", self.r.glcm_contrast))
+        if self.r.attribute_profile is not None:
+            layers.append(("attribute_profile", self.r.attribute_profile))
+        if self.r.shadow_pair_score is not None:
+            layers.append(("shadow_pair_score", self.r.shadow_pair_score))
+        if self.r.osm_prior is not None:
+            layers.append(("osm_prior", self.r.osm_prior))
+
         for name, arr in layers:
             path = self.out / f"{name}.tif"
             self._write_tiff(path, arr)

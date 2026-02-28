@@ -41,11 +41,13 @@ from scipy.ndimage import (
     binary_erosion,
     binary_dilation,
     grey_opening,
+    distance_transform_edt,
 )
 from scipy.cluster.vq import kmeans2
 from skimage.feature import canny, peak_local_max
 from skimage.segmentation import watershed
 from skimage.measure import regionprops
+from skimage.morphology import disk, white_tophat, black_tophat
 
 from .fetcher import HiResImageryData
 
@@ -96,6 +98,14 @@ class HiResResult:
     width: int = 0
     params: Dict = field(default_factory=dict, repr=False)
 
+    # ---- Advanced building features (v2) — all optional -----------------
+    ndsm: Optional[np.ndarray] = None
+    glcm_contrast: Optional[np.ndarray] = None
+    glcm_homogeneity: Optional[np.ndarray] = None
+    attribute_profile: Optional[np.ndarray] = None
+    shadow_pair_score: Optional[np.ndarray] = None
+    osm_prior: Optional[np.ndarray] = None
+
     # ------------------------------------------------------------------
 
     def summary(self) -> None:
@@ -107,10 +117,27 @@ class HiResResult:
         n_crowns = len(self.tree_crowns)
         canopy_frac = self.canopy_mask.sum() / max(self.canopy_mask.size, 1)
         n_species = len(self.species_legend)
-        print("=== Hi-Res Analysis Summary ==============================")
+        print("=== Hi-Res Analysis Summary (v2) =========================")
         print(f"  Grid            : {self.height} × {self.width} px")
+        # Advanced features status
+        tags = []
+        if self.ndsm is not None:
+            tags.append("3DEP-nDSM")
+        if self.glcm_contrast is not None:
+            tags.append("GLCM")
+        if self.attribute_profile is not None:
+            tags.append("MAP")
+        if self.osm_prior is not None:
+            tags.append("OSM-prior")
+        if self.shadow_pair_score is not None:
+            tags.append("Shadow-pair")
+        if tags:
+            print(f"  Features (v2)   : {', '.join(tags)}")
         print(f"  Buildings       : {n_bldg:,}")
         print(f"  Building area   : {bldg_area:,.0f} m²")
+        if self.ndsm is not None and n_bldg > 0 and "height_mean" in self.building_footprints.columns:
+            mean_h = self.building_footprints["height_mean"].mean()
+            print(f"  Mean bldg height: {mean_h:.1f} m")
         print(f"  Tree crowns     : {n_crowns:,}")
         print(f"  Canopy cover    : {canopy_frac * 100:.1f}%")
         print(f"  Species groups  : {n_species}")
@@ -133,12 +160,36 @@ DEFAULT_PARAMS: Dict[str, Any] = {
     "shadow_k": 2.0,
     "edge_sigma": 1.5,
 
-    # Building-fusion weights
-    "w_mbi": 0.30,
-    "w_contrast": 0.25,
-    "w_edge": 0.15,
-    "w_non_veg": 0.20,
-    "w_shadow_prox": 0.10,
+    # Building-fusion weights (original features)
+    "w_mbi": 0.14,
+    "w_contrast": 0.10,
+    "w_edge": 0.06,
+    "w_non_veg": 0.08,
+    "w_shadow_prox": 0.04,
+
+    # Building-fusion weights (v2 advanced features)
+    "w_ndsm": 0.22,           # height is strongest building indicator
+    "w_glcm": 0.10,           # rooftop texture discrimination
+    "w_attr_profile": 0.08,   # multi-scale morphological attributes
+    "w_osm_prior": 0.10,      # OpenStreetMap building anchors
+    "w_shadow_pair": 0.08,    # SAR shadow-layover geometric pairing
+
+    # GLCM parameters
+    "glcm_window": 21,
+    "glcm_levels": 32,
+
+    # Attribute profile parameters
+    "ap_radii": [3, 5, 8, 12],  # disk SE radii (covers ~28–450 px area)
+
+    # Shadow-layover pairing
+    "pair_bright_pct": 85,
+    "pair_mbi_floor": 0.3,
+    "pair_shadow_decay": 15.0,
+    "pair_bright_decay": 10.0,
+
+    # nDSM height thresholds
+    "ndsm_min_bldg_height": 2.5,  # metres — min for a plausible building
+    "ndsm_max_bldg_height": 80.0, # metres — above this is likely artefact
 
     # Building thresholds
     "building_threshold": 0.35,
@@ -202,7 +253,13 @@ class HiResAnalyser:
     # ==================================================================
 
     def run(self, verbose: bool = True) -> HiResResult:
-        """Execute the full seven-step analysis pipeline."""
+        """Execute the full nine-step analysis pipeline.
+
+        Steps 1-3 are unchanged.  Steps 3b-3d compute advanced building
+        features (nDSM, GLCM texture, Morphological Attribute Profiles,
+        OSM prior, shadow-layover pairing).  Step 4 fuses ALL features.
+        Steps 5-9 continue with canopy/crown/species as before.
+        """
         p = self.params
         sar_raw = self.img.sar
         naip = self.img.naip
@@ -212,13 +269,13 @@ class HiResAnalyser:
 
         # ---- Step 1: SAR preprocessing --------------------------------
         if verbose:
-            print("Step 1/7 — SAR preprocessing …")
+            print("Step 1/9 — SAR preprocessing …")
         sar_db = self._to_db(sar_raw)
         sar_filt = self._lee_filter(sar_db, p["lee_window"])
 
         # ---- Step 2: SAR feature extraction ---------------------------
         if verbose:
-            print("Step 2/7 — SAR feature extraction …")
+            print("Step 2/9 — SAR feature extraction …")
         mbi = self._morphological_building_index(
             sar_filt, p["mbi_scales"], p["mbi_angles"],
         )
@@ -228,14 +285,71 @@ class HiResAnalyser:
 
         # ---- Step 3: Optical feature extraction -----------------------
         if verbose:
-            print("Step 3/7 — Optical feature extraction …")
+            print("Step 3/9 — Optical feature extraction …")
         ndvi = self._compute_ndvi(naip)
         brightness = self._brightness(naip)
 
-        # ---- Step 4: Building detection -------------------------------
+        # ---- Step 3b: Advanced building features ----------------------
         if verbose:
-            print("Step 4/7 — Building detection …")
-        bldg_score = self._building_fusion(mbi, contrast, edges, ndvi, shadows)
+            print("Step 3b/9 — Advanced building features …")
+
+        # nDSM (Height Above Ground)
+        ndsm = self.img.ndsm  # may be None
+        ndsm_score: Optional[np.ndarray] = None
+        if ndsm is not None:
+            lo = p["ndsm_min_bldg_height"]
+            hi = p["ndsm_max_bldg_height"]
+            ndsm_score = self._ndsm_building_score(ndsm, ndvi, lo, hi)
+            if verbose:
+                pct = 100 * (ndsm_score > 0.3).sum() / max(ndsm_score.size, 1)
+                print(f"  nDSM score: {pct:.1f}% pixels above 0.3")
+
+        # GLCM texture
+        glcm_c, glcm_h = self._glcm_texture(
+            naip, p["glcm_window"], p["glcm_levels"],
+        )
+        # Building-texture score: high contrast + low homogeneity = rooftop
+        glcm_bldg = np.clip(glcm_c * (1.0 - glcm_h), 0, 1).astype(np.float32)
+        if verbose:
+            print(f"  GLCM texture computed (window={p['glcm_window']})")
+
+        # Multi-scale morphological top-hat profiles
+        attr_prof = self._attribute_profiles(
+            sar_filt, p["ap_radii"],
+        )
+        if verbose:
+            print(f"  Attribute profiles ({len(p['ap_radii'])} scales)")
+
+        # Shadow-layover geometric pairing
+        pair_sc = self._shadow_layover_pairing(
+            sar_filt, shadows, mbi,
+            p["pair_bright_pct"], p["pair_mbi_floor"],
+            p["pair_shadow_decay"], p["pair_bright_decay"],
+        )
+        if verbose:
+            print(f"  Shadow-layover pairing done")
+
+        # OSM building prior raster
+        osm_prior: Optional[np.ndarray] = None
+        if self.img.osm_buildings is not None:
+            osm_prior = self._rasterize_osm_prior(
+                self.img.osm_buildings, H, W, transform,
+            )
+            if verbose:
+                n_osm = len(self.img.osm_buildings)
+                print(f"  OSM prior rasterised ({n_osm:,} footprints)")
+
+        # ---- Step 4: Building detection (advanced fusion) -------------
+        if verbose:
+            print("Step 4/9 — Building detection (advanced fusion) …")
+        bldg_score = self._building_fusion(
+            mbi, contrast, edges, ndvi, shadows,
+            ndsm_score=ndsm_score,
+            glcm_bldg=glcm_bldg,
+            attr_profile=attr_prof,
+            osm_prior=osm_prior,
+            shadow_pair=pair_sc,
+        )
         bldg_mask = self._morphological_cleanup(
             bldg_score > p["building_threshold"],
             p["morph_cleanup_iter"],
@@ -244,18 +358,18 @@ class HiResAnalyser:
             bldg_mask, bldg_score, transform, crs_wkt, p["min_building_area"],
         )
         footprints = self._regularize_footprints(
-            raw_fp, bldg_score, ndvi, transform,
+            raw_fp, bldg_score, ndvi, transform, ndsm=ndsm,
         )
         bldg_mask_final = self._rasterize_footprints(footprints, H, W, transform)
 
         # ---- Step 5: Canopy detection ---------------------------------
         if verbose:
-            print("Step 5/7 — Canopy detection …")
+            print("Step 5/9 — Canopy detection …")
         canopy = self._canopy_mask(ndvi, bldg_mask_final, p["ndvi_threshold"])
 
         # ---- Step 6: Crown delineation --------------------------------
         if verbose:
-            print("Step 6/7 — Crown delineation …")
+            print("Step 6/9 — Crown delineation …")
         crown_labels = self._crown_delineation(
             ndvi, canopy, p["crown_smooth_sigma"], p["crown_min_distance"],
         )
@@ -265,7 +379,7 @@ class HiResAnalyser:
 
         # ---- Step 7: Species classification ---------------------------
         if verbose:
-            print("Step 7/7 — Species classification …")
+            print("Step 7/9 — Species classification …")
         sp_map, sp_gdf, sp_legend = self._classify_species(
             naip, sar_filt, crown_labels, tree_gdf,
             p["n_species_clusters"], p["min_crown_pixels_for_species"],
@@ -287,6 +401,12 @@ class HiResAnalyser:
             building_score=bldg_score,
             building_mask=bldg_mask_final,
             building_footprints=footprints,
+            ndsm=ndsm,
+            glcm_contrast=glcm_c,
+            glcm_homogeneity=glcm_h,
+            attribute_profile=attr_prof,
+            shadow_pair_score=pair_sc,
+            osm_prior=osm_prior,
             canopy_mask=canopy,
             crown_labels=crown_labels,
             tree_crowns=tree_gdf,
@@ -461,15 +581,20 @@ class HiResAnalyser:
         edges: np.ndarray,
         ndvi: np.ndarray,
         shadows: np.ndarray,
+        *,
+        ndsm_score: Optional[np.ndarray] = None,
+        glcm_bldg: Optional[np.ndarray] = None,
+        attr_profile: Optional[np.ndarray] = None,
+        osm_prior: Optional[np.ndarray] = None,
+        shadow_pair: Optional[np.ndarray] = None,
     ) -> np.ndarray:
-        """Fuse SAR and optical features into a continuous building score.
+        """Fuse SAR, optical, and advanced features into a building score.
 
-        .. math::
-            S = w_{mbi}  \\cdot \\text{MBI}
-              + w_{contrast} \\cdot C
-              + w_{edge}  \\cdot E
-              + w_{nv} \\cdot (1 - \\text{NDVI})
-              + w_{sp} \\cdot \\text{shadow\\_proximity}
+        The fusion adaptively re-normalises weights so that only
+        *available* feature channels contribute.  When 3DEP nDSM,
+        GLCM, Attribute Profiles, OSM priors, and shadow-layover
+        pairing are all present the detector is dramatically more
+        precise than the SAR-only baseline.
         """
         p = self.params
         non_veg = (1.0 - np.clip(ndvi, 0, 1)).astype(np.float32)
@@ -479,13 +604,33 @@ class HiResAnalyser:
             shadows, structure=np.ones((7, 7)), iterations=2,
         ).astype(np.float32)
 
-        score = (
-            p["w_mbi"]        * mbi
-            + p["w_contrast"] * contrast
-            + p["w_edge"]     * edges
-            + p["w_non_veg"]  * non_veg
-            + p["w_shadow_prox"] * shadow_prox
-        )
+        # Build {name → (array, weight)} dict for available features
+        features: Dict[str, Tuple[np.ndarray, float]] = {
+            "mbi":        (mbi,         p["w_mbi"]),
+            "contrast":   (contrast,    p["w_contrast"]),
+            "edge":       (edges,       p["w_edge"]),
+            "non_veg":    (non_veg,     p["w_non_veg"]),
+            "shadow_prox":(shadow_prox, p["w_shadow_prox"]),
+        }
+
+        # Conditionally add advanced features
+        if ndsm_score is not None:
+            features["ndsm"] = (ndsm_score, p["w_ndsm"])
+        if glcm_bldg is not None:
+            features["glcm"] = (glcm_bldg, p["w_glcm"])
+        if attr_profile is not None:
+            features["attr_profile"] = (attr_profile, p["w_attr_profile"])
+        if osm_prior is not None:
+            features["osm_prior"] = (osm_prior, p["w_osm_prior"])
+        if shadow_pair is not None:
+            features["shadow_pair"] = (shadow_pair, p["w_shadow_pair"])
+
+        # Re-normalise weights so they sum to 1.0
+        total_w = sum(w for _, w in features.values())
+        score = np.zeros_like(mbi, dtype=np.float64)
+        for arr, w in features.values():
+            score += (w / total_w) * arr.astype(np.float64)
+
         return np.clip(score, 0, 1).astype(np.float32)
 
     # ------------------------------------------------------------------
@@ -561,11 +706,13 @@ class HiResAnalyser:
         score: np.ndarray,
         ndvi: np.ndarray,
         transform: Affine,
+        *,
+        ndsm: Optional[np.ndarray] = None,
     ) -> gpd.GeoDataFrame:
         """Score each footprint for building-likeness and filter.
 
-        Seven-component scoring
-        -----------------------
+        Eight-component scoring (v2)
+        ----------------------------
         1. **Rectangularity** — area / MRR area.
         2. **Compactness** — Polsby–Popper 4πA / P².
         3. **Solidity** — area / convex-hull area.
@@ -573,6 +720,8 @@ class HiResAnalyser:
         5. **Size appropriateness** — log-normal peaked at typical houses.
         6. **Detection probability** — mean score within polygon.
         7. **Vegetation penalty** — suppresses high-NDVI blobs.
+        8. **Height confirmation** *(new)* — mean nDSM height within
+           polygon, boosting elevated non-vegetation objects.
 
         Polygons that pass the ``building_score_threshold`` are replaced
         by their minimum rotated rectangle when rectangularity > 0.6.
@@ -581,7 +730,7 @@ class HiResAnalyser:
             "geometry", "area_m2", "score_mean", "score_max",
             "compactness", "rectangularity", "solidity",
             "aspect_ratio", "edge_sharpness", "ndvi_mean",
-            "building_score", "is_rectangular",
+            "height_mean", "building_score", "is_rectangular",
         ]
         if footprints.empty:
             return gpd.GeoDataFrame(
@@ -644,6 +793,13 @@ class HiResAnalyser:
             ndvi_vals = self._sample_polygon(ndvi_c, geom, transform)
             ndvi_mean = float(np.mean(ndvi_vals)) if ndvi_vals.size else 0.0
 
+            # 7. Height within polygon (nDSM)
+            height_mean = 0.0
+            if ndsm is not None:
+                ndsm_c = np.nan_to_num(ndsm, nan=0.0)
+                h_vals = self._sample_polygon(ndsm_c, geom, transform)
+                height_mean = float(np.mean(h_vals)) if h_vals.size else 0.0
+
             # ---- Composite building score ----
             rect_sc  = np.clip(rectangularity, 0, 1)
             comp_sc  = np.clip(compactness, 0, 1)
@@ -654,15 +810,35 @@ class HiResAnalyser:
             prob_sc  = float(row.get("score_mean", 0.5))
             veg_pen  = max(0.0, ndvi_mean - 0.2) * 2.0
 
-            bldg_sc = (
-                0.20 * rect_sc
-                + 0.15 * comp_sc
-                + 0.15 * sol_sc
-                + 0.10 * sharp_sc
-                + 0.15 * size_sc
-                + 0.15 * prob_sc
-                - 0.10 * veg_pen
-            )
+            # Height confirmation: sigmoid centred at 3 m, saturates ~8 m
+            if ndsm is not None and height_mean > 0:
+                height_sc = float(1.0 / (1.0 + np.exp(-1.5 * (height_mean - 3.0))))
+            else:
+                height_sc = 0.0
+
+            if ndsm is not None:
+                # 8-component scoring with height
+                bldg_sc = (
+                    0.15 * rect_sc
+                    + 0.10 * comp_sc
+                    + 0.10 * sol_sc
+                    + 0.08 * sharp_sc
+                    + 0.10 * size_sc
+                    + 0.12 * prob_sc
+                    + 0.25 * height_sc
+                    - 0.10 * veg_pen
+                )
+            else:
+                # 7-component scoring (no height)
+                bldg_sc = (
+                    0.20 * rect_sc
+                    + 0.15 * comp_sc
+                    + 0.15 * sol_sc
+                    + 0.10 * sharp_sc
+                    + 0.15 * size_sc
+                    + 0.15 * prob_sc
+                    - 0.10 * veg_pen
+                )
             bldg_sc = float(np.clip(bldg_sc, 0, 1))
 
             if bldg_sc < p["building_score_threshold"]:
@@ -681,6 +857,7 @@ class HiResAnalyser:
                 "aspect_ratio":   round(aspect, 2),
                 "edge_sharpness": round(edge_sharpness, 6),
                 "ndvi_mean":      round(ndvi_mean, 4),
+                "height_mean":    round(height_mean, 2),
                 "building_score": round(bldg_sc, 4),
                 "is_rectangular": rectangularity > 0.6,
             })
@@ -748,6 +925,218 @@ class HiResAnalyser:
         if result is None:
             return np.zeros((H, W), dtype=bool)
         return result.astype(bool)
+
+    # ==================================================================
+    # Advanced building features (v2)
+    # ==================================================================
+
+    @staticmethod
+    def _ndsm_building_score(
+        ndsm: np.ndarray,
+        ndvi: np.ndarray,
+        min_height: float = 2.5,
+        max_height: float = 80.0,
+    ) -> np.ndarray:
+        """Convert nDSM (height-above-ground) to a building probability.
+
+        A pixel is likely a building if it is *elevated* AND *not vegetated*.
+        The score uses a logistic sigmoid centred at ``min_height`` to
+        ramp from 0 → 1, multiplied by a vegetation suppression term
+        (1 − NDVI).  Heights above ``max_height`` are assumed to be
+        LiDAR artefacts and are clamped.
+        """
+        h = np.clip(ndsm, 0, max_height).astype(np.float64)
+        # Sigmoid: 0 at ground, ~0.5 at min_height, ~1.0 at 2×min_height
+        height_prob = 1.0 / (1.0 + np.exp(-2.0 * (h - min_height)))
+        # Suppress vegetation: high NDVI → low score
+        veg_suppress = (1.0 - np.clip(ndvi, 0, 1)).astype(np.float64)
+        score = height_prob * veg_suppress
+        return np.clip(score, 0, 1).astype(np.float32)
+
+    @staticmethod
+    def _glcm_texture(
+        naip: np.ndarray,
+        window: int = 21,
+        levels: int = 32,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Fast GLCM-approximated texture features from optical imagery.
+
+        Instead of computing the full Gray-Level Co-occurrence Matrix per
+        pixel (O(N × levels²)), this uses a fast neighbourhood-difference
+        approach that captures the same discriminative information:
+
+        * **Contrast** — mean of (i − j)² over 4 directional offsets,
+          smoothed with a uniform filter.  High on rooftops (heterogeneous
+          surface) and building edges.
+        * **Homogeneity** — mean of 1 / (1 + (i − j)²).  High on smooth
+          surfaces like roads and water.
+
+        Both are normalised to [0, 1] via percentile stretch.
+        """
+        # Convert to grayscale and quantise
+        gray = np.mean(naip[:, :, :3], axis=2).astype(np.float64)
+        g_min, g_max = gray.min(), gray.max()
+        gray_q = np.clip(
+            ((gray - g_min) / (g_max - g_min + 1e-10) * (levels - 1)),
+            0, levels - 1,
+        ).astype(np.float64)
+
+        offsets = [(0, 1), (1, 0), (1, 1), (1, -1)]
+        contrast_maps: List[np.ndarray] = []
+        homog_maps: List[np.ndarray] = []
+
+        for dy, dx in offsets:
+            shifted = np.roll(np.roll(gray_q, dy, axis=0), dx, axis=1)
+            diff = gray_q - shifted
+            diff_sq = diff ** 2
+            local_contrast = uniform_filter(diff_sq, size=window)
+            local_homog = uniform_filter(1.0 / (1.0 + diff_sq), size=window)
+            contrast_maps.append(local_contrast)
+            homog_maps.append(local_homog)
+
+        contrast = np.mean(contrast_maps, axis=0)
+        homogeneity = np.mean(homog_maps, axis=0)
+
+        # Percentile normalise to [0, 1]
+        for arr_name in ("contrast", "homogeneity"):
+            arr = contrast if arr_name == "contrast" else homogeneity
+            valid = arr[np.isfinite(arr)]
+            if valid.size:
+                lo, hi = np.percentile(valid, [2, 98])
+                arr[:] = np.clip((arr - lo) / (hi - lo + 1e-10), 0, 1)
+
+        return contrast.astype(np.float32), homogeneity.astype(np.float32)
+
+    @staticmethod
+    def _attribute_profiles(
+        sar: np.ndarray,
+        radii: List[int],
+    ) -> np.ndarray:
+        """Multi-scale morphological top-hat profiles from SAR imagery.
+
+        Applies **white top-hat** (opening residual) and **black top-hat**
+        (closing residual) with disk structuring elements at increasing
+        radii.  Each radius targets structures of a particular size:
+
+        * White top-hat → bright objects smaller than the SE
+          (e.g. building rooftops).
+        * Black top-hat → dark objects smaller than the SE
+          (e.g. shadow regions).
+
+        Radii are derived from equivalent area thresholds via
+        r = sqrt(area / π) and rounded: [3, 6, 11, 23, 45] by default.
+
+        The responses across all scales are averaged and
+        percentile-normalised to [0, 1].
+        """
+        # Normalise to uint8 so skimage can use fast flat-SE decomposition
+        s = sar.astype(np.float64)
+        s_min, s_max = np.nanmin(s), np.nanmax(s)
+        s_norm = ((s - s_min) / (s_max - s_min + 1e-10) * 255).astype(np.uint8)
+
+        profiles: List[np.ndarray] = []
+        for r in radii:
+            se = disk(r)
+            wth: np.ndarray = np.asarray(white_tophat(s_norm, footprint=se), dtype=np.float32)
+            bth: np.ndarray = np.asarray(black_tophat(s_norm, footprint=se), dtype=np.float32)
+            profiles.append(np.maximum(wth, 0))
+            profiles.append(np.maximum(bth, 0))
+
+        if not profiles:
+            return np.zeros_like(sar, dtype=np.float32)
+
+        combined = np.mean(profiles, axis=0)
+        valid = combined[combined > 0]
+        if valid.size == 0:
+            return np.zeros_like(sar, dtype=np.float32)
+        lo, hi = np.percentile(valid, [2, 98])
+        return np.clip(
+            (combined - lo) / (hi - lo + 1e-10), 0, 1,
+        ).astype(np.float32)
+
+    @staticmethod
+    def _shadow_layover_pairing(
+        sar_filt: np.ndarray,
+        shadows: np.ndarray,
+        mbi: np.ndarray,
+        bright_pct: float = 85,
+        mbi_floor: float = 0.3,
+        shadow_decay: float = 15.0,
+        bright_decay: float = 10.0,
+    ) -> np.ndarray:
+        """Shadow–layover geometric pairing score.
+
+        Buildings in SAR create a characteristic spatial signature:
+        a **bright double-bounce** (layover) on the near-range side
+        and a **dark shadow** on the far-range side.  Pixels that sit
+        between a bright zone and an adjacent shadow zone are highly
+        likely to be building rooftops.
+
+        The pairing score is computed via distance transforms:
+
+        .. math::
+            P(x) = \\exp\\!\\left(-\\frac{d_{shadow}(x)}{\\tau_s}\\right)
+                   \\cdot
+                   \\exp\\!\\left(-\\frac{d_{bright}(x)}{\\tau_b}\\right)
+
+        where *d* are Euclidean distance fields and τ are decay constants.
+        """
+        finite = sar_filt[np.isfinite(sar_filt)]
+        if finite.size == 0:
+            return np.zeros_like(sar_filt, dtype=np.float32)
+
+        bright_thresh = np.percentile(finite, bright_pct)
+        bright = (sar_filt > bright_thresh) & (mbi > mbi_floor)
+
+        # Euclidean distance transforms
+        shadow_dist: np.ndarray = np.asarray(distance_transform_edt(~shadows), dtype=np.float32)
+        bright_dist: np.ndarray = np.asarray(distance_transform_edt(~bright), dtype=np.float32)
+
+        pair = (
+            np.exp(-shadow_dist / shadow_decay)
+            * np.exp(-bright_dist / bright_decay)
+        )
+
+        pmax = pair.max()
+        if pmax > 0:
+            pair /= pmax
+        return pair.astype(np.float32)
+
+    @staticmethod
+    def _rasterize_osm_prior(
+        osm_gdf: "gpd.GeoDataFrame",
+        H: int,
+        W: int,
+        transform: Affine,
+        buffer_m: float = 5.0,
+    ) -> np.ndarray:
+        """Rasterise OSM building footprints into a soft prior [0-1].
+
+        Each OSM polygon is dilated by *buffer_m* metres to account for
+        positional uncertainty in the OSM data, then rasterised.  The
+        result is Gaussian-smoothed so that pixels *near* an OSM building
+        also receive a moderate prior.
+        """
+        if osm_gdf.empty:
+            return np.zeros((H, W), dtype=np.float32)
+
+        buffered = osm_gdf.geometry.buffer(buffer_m)
+        geoms = [(g, 1) for g in buffered if g is not None and not g.is_empty]
+        if not geoms:
+            return np.zeros((H, W), dtype=np.float32)
+
+        burned = rasterize(
+            geoms, out_shape=(H, W), transform=transform, dtype=np.uint8,
+        )
+        if burned is None:
+            return np.zeros((H, W), dtype=np.float32)
+
+        # Gaussian smooth for soft boundary
+        prior = gaussian_filter(burned.astype(np.float64), sigma=3.0)
+        pmax = prior.max()
+        if pmax > 0:
+            prior /= pmax
+        return np.clip(prior, 0, 1).astype(np.float32)
 
     # ==================================================================
     # Canopy detection

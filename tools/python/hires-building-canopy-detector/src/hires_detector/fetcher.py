@@ -23,6 +23,7 @@ import warnings
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
+import geopandas as gpd
 import numpy as np
 import rasterio
 from rasterio.crs import CRS
@@ -65,13 +66,24 @@ class HiResImageryData:
     # Common grid metadata
     transform: Affine
     crs: CRS
-    height: int
-    width: int
+    height: int = 0
+    width: int = 0
+
+    # nDSM — Height Above Ground from 3DEP LiDAR (float32 m) — (H, W)
+    # None when 3DEP has no coverage for the AOI.
+    ndsm: Optional[np.ndarray] = None
+
+    # OSM building footprints as a GeoDataFrame (projected to AOI CRS).
+    # None when Overpass API is unreachable or the AOI has no buildings.
+    osm_buildings: Optional[gpd.GeoDataFrame] = None
 
     def __repr__(self) -> str:
+        ndsm_tag = "yes" if self.ndsm is not None else "no"
+        osm_tag = len(self.osm_buildings) if self.osm_buildings is not None else "no"
         return (
             f"<HiResImageryData  SAR={self.sar_source}@{self.sar_resolution_m}m  "
             f"Optical={self.naip_source}@{self.naip_resolution_m}m  "
+            f"nDSM={ndsm_tag}  OSM={osm_tag}  "
             f"grid={self.height}x{self.width} px>"
         )
 
@@ -140,6 +152,14 @@ class HiResImageryFetcher:
         # -- DEM -------------------------------------------------------
         dem_arr = self._fetch_dem(transform, crs, height, width, verbose)
 
+        # -- 3DEP LiDAR nDSM (Height Above Ground) --------------------
+        ndsm_arr = self._fetch_3dep_ndsm(
+            transform, crs, height, width, verbose,
+        )
+
+        # -- OSM building priors ---------------------------------------
+        osm_gdf = self._fetch_osm_buildings(crs, verbose)
+
         return HiResImageryData(
             sar=sar_arr,
             sar_source=sar_src,
@@ -148,6 +168,8 @@ class HiResImageryFetcher:
             naip_source=opt_src,
             naip_resolution_m=opt_res,
             dem=dem_arr,
+            ndsm=ndsm_arr,
+            osm_buildings=osm_gdf,
             transform=transform,
             crs=crs,
             height=height,
@@ -558,6 +580,165 @@ class HiResImageryFetcher:
             print(f"  DEM: {dem.shape} @ {self.res} m")
 
         return dem
+
+    # ------------------------------------------------------------------
+    # 3DEP LiDAR nDSM (Height Above Ground)
+    # ------------------------------------------------------------------
+
+    def _fetch_3dep_ndsm(
+        self, transform, crs, height, width, verbose,
+    ) -> Optional[np.ndarray]:
+        """Fetch 3DEP LiDAR Height Above Ground (HAG) from Planetary Computer.
+
+        The ``3dep-lidar-hag`` collection provides pre-computed normalised
+        Digital Surface Model values (height above bare earth), derived
+        from airborne LiDAR point clouds.  Resolution is typically 1 m,
+        matching the target grid.  Where LiDAR coverage is unavailable
+        the method returns *None* and the analysis gracefully skips
+        height-based features.
+        """
+        import stackstac
+
+        if verbose:
+            print("Fetching 3DEP LiDAR Height Above Ground …")
+
+        try:
+            catalog = pystac_client.Client.open(
+                PC_STAC_URL, modifier=planetary_computer.sign_inplace,
+            )
+            search = catalog.search(
+                collections=["3dep-lidar-hag"],
+                intersects=self.aoi.geojson,
+                limit=20,
+            )
+            items = list(search.items())
+        except Exception as exc:
+            if verbose:
+                print(f"  3DEP search failed ({exc!r}) — skipping nDSM.")
+            return None
+
+        if not items:
+            if verbose:
+                print("  No 3DEP LiDAR coverage — skipping nDSM.")
+            return None
+
+        if verbose:
+            print(f"  Found {len(items)} 3DEP HAG tile(s).")
+
+        try:
+            x0, y0, x1, y1 = self.aoi.bbox_utm
+            stack = stackstac.stack(
+                items,
+                assets=["data"],
+                bounds=(x0, y0, x1, y1),
+                epsg=crs.to_epsg(),
+                resolution=self.res,
+            )
+            ndsm = (
+                stack.median(dim="time")
+                .compute(scheduler="synchronous")
+                .values.squeeze()
+                .astype(np.float32)
+            )
+            ndsm = np.nan_to_num(ndsm, nan=0.0)
+
+            if ndsm.shape != (height, width):
+                ndsm = np.asarray(zoom(
+                    ndsm,
+                    (height / ndsm.shape[0], width / ndsm.shape[1]),
+                    order=1,
+                )).astype(np.float32)
+
+            # Clamp to sane range (negative values = noise, >200 m = artefact)
+            ndsm = np.clip(ndsm, 0.0, 200.0)
+
+            if verbose:
+                pct_cover = 100 * (ndsm > 0.5).sum() / max(ndsm.size, 1)
+                print(
+                    f"  nDSM: {ndsm.shape} @ {self.res} m  "
+                    f"(max={ndsm.max():.1f} m, cover={pct_cover:.0f}%)"
+                )
+            return ndsm
+
+        except Exception as exc:
+            if verbose:
+                print(f"  3DEP stack failed ({exc!r}) — skipping nDSM.")
+            return None
+
+    # ------------------------------------------------------------------
+    # OSM building priors
+    # ------------------------------------------------------------------
+
+    def _fetch_osm_buildings(
+        self, crs: CRS, verbose: bool = True,
+    ) -> Optional[gpd.GeoDataFrame]:
+        """Fetch building footprints from OpenStreetMap via Overpass API.
+
+        Queries the public Overpass interpreter for all ``building=*``
+        ways within the AOI bounding box.  The result is projected to the
+        analysis CRS so that geometries are in the same coordinate system
+        as the raster layers.
+
+        Returns *None* if the query fails or yields no buildings.
+        """
+        import requests as _requests
+        from shapely.geometry import Polygon as ShapelyPolygon
+        import geopandas as _gpd
+
+        if verbose:
+            print("Fetching OSM building priors …")
+
+        w, s, e, n = self.aoi.bbox_wgs84
+        # Overpass QL query — all buildings within bbox
+        overpass_query = (
+            f'[out:json][timeout:30];'
+            f'(way["building"]({s},{w},{n},{e});'
+            f'relation["building"]({s},{w},{n},{e}););'
+            f'out body;>;out skel qt;'
+        )
+
+        try:
+            resp = _requests.post(
+                "https://overpass-api.de/api/interpreter",
+                data={"data": overpass_query},
+                timeout=45,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as exc:
+            if verbose:
+                print(f"  Overpass query failed ({exc!r}) — skipping OSM priors.")
+            return None
+
+        # Parse OSM JSON → polygons
+        nodes: Dict[int, Tuple[float, float]] = {}
+        for el in data.get("elements", []):
+            if el["type"] == "node":
+                nodes[el["id"]] = (el["lon"], el["lat"])
+
+        polys = []
+        for el in data.get("elements", []):
+            if el["type"] == "way" and "nodes" in el:
+                coords = [nodes[nid] for nid in el["nodes"] if nid in nodes]
+                if len(coords) >= 4:
+                    try:
+                        poly = ShapelyPolygon(coords)
+                        if poly.is_valid and poly.area > 0:
+                            polys.append(poly)
+                    except Exception:
+                        continue
+
+        if not polys:
+            if verbose:
+                print("  No OSM buildings found in AOI.")
+            return None
+
+        gdf = _gpd.GeoDataFrame(geometry=polys, crs="EPSG:4326")
+        gdf = gdf.to_crs(crs)
+
+        if verbose:
+            print(f"  OSM buildings: {len(gdf):,} footprints retrieved.")
+        return gdf
 
     # ------------------------------------------------------------------
     # Raster I/O helpers

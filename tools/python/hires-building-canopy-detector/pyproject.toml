@@ -30,6 +30,7 @@ dependencies = [
     "pystac-client>=0.7",
     "planetary-computer>=0.5",
     "scikit-image>=0.21",
+    "requests>=2.28",
 ]
 
 [project.optional-dependencies]
