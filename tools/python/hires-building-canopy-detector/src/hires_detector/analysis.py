@@ -178,7 +178,8 @@ class HiResAnalyser:
 
         # Adapt parameters to SAR resolution
         if imagery.sar_resolution_m > 5.0:
-            # Sentinel-1 at 10 m — widen kernels for coarser pixel grid
+            # Sentinel-1 at 10 m — widen kernels & raise thresholds for
+            # the coarser, noisier SAR grid.
             self.params.setdefault("_hires", False)
             if "mbi_scales" not in overrides:
                 self.params["mbi_scales"] = [2, 4, 8, 12]
@@ -186,6 +187,13 @@ class HiResAnalyser:
                 self.params["contrast_window"] = 11
             if "crown_min_distance" not in overrides:
                 self.params["crown_min_distance"] = 3
+            # S1 building scores are inflated — raise fusion threshold
+            if "building_threshold" not in overrides:
+                self.params["building_threshold"] = 0.50
+            if "morph_cleanup_iter" not in overrides:
+                self.params["morph_cleanup_iter"] = 2
+            if "building_score_threshold" not in overrides:
+                self.params["building_score_threshold"] = 0.45
         else:
             self.params["_hires"] = True
 
@@ -694,14 +702,35 @@ class HiResAnalyser:
     def _sample_polygon(
         raster: np.ndarray, geom, transform: Affine,
     ) -> np.ndarray:
-        """Return raster values falling inside *geom*."""
+        """Return raster values falling inside *geom*.
+
+        Uses the polygon bounding-box to clip the raster window first,
+        avoiding a full-size geometry mask for every polygon.
+        """
+        H, W = raster.shape[:2]
+        minx, miny, maxx, maxy = geom.bounds
+        # Convert geo coords → pixel indices
+        col0 = int((minx - transform.c) / transform.a)
+        col1 = int((maxx - transform.c) / transform.a) + 1
+        row0 = int((maxy - transform.f) / transform.e)       # e is negative
+        row1 = int((miny - transform.f) / transform.e) + 1
+        col0, col1 = max(col0, 0), min(col1, W)
+        row0, row1 = max(row0, 0), min(row1, H)
+        if col0 >= col1 or row0 >= row1:
+            return np.array([], dtype=raster.dtype)
+        # Window transform & clipped raster
+        win_transform = Affine(
+            transform.a, transform.b, transform.c + col0 * transform.a,
+            transform.d, transform.e, transform.f + row0 * transform.e,
+        )
+        win_raster = raster[row0:row1, col0:col1]
         mask = ~geometry_mask(
             [mapping(geom)],
-            out_shape=raster.shape,
-            transform=transform,
+            out_shape=win_raster.shape,
+            transform=win_transform,
             all_touched=True,
         )
-        return raster[mask]
+        return win_raster[mask]
 
     @staticmethod
     def _rasterize_footprints(
@@ -786,8 +815,12 @@ class HiResAnalyser:
             area_m2 = region.area * pixel_area
             if area_m2 < min_area:
                 continue
-            blob = (crown_labels == region.label).astype(np.uint8)
-            polys = list(shapes(blob, mask=blob, transform=transform))
+            # Crop to bounding box for fast per-crown vectorisation
+            r0, c0, r1, c1 = region.bbox
+            crop = crown_labels[r0:r1, c0:c1]
+            blob = (crop == region.label).astype(np.uint8)
+            crop_tf = transform * Affine.translation(c0, r0)
+            polys = list(shapes(blob, mask=blob, transform=crop_tf))
             if not polys:
                 continue
             geom = shape(polys[0][0])

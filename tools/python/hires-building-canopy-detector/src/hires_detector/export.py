@@ -52,6 +52,10 @@ class HiResOutputWriter:
         self.save_canopy_overlay(verbose)
         self.save_species_map(verbose)
         self.save_stats_dashboard(verbose)
+        # ── Three high-resolution final outputs ───────────────────────
+        self.save_final_vegetation_classification(verbose)
+        self.save_final_canopy_crowns(verbose)
+        self.save_final_building_footprints(verbose)
 
     # ==================================================================
     # GeoTIFFs
@@ -383,3 +387,182 @@ class HiResOutputWriter:
         plt.close(fig)
         if verbose:
             print(f"  PNG     : {path.name}")
+
+    # ==================================================================
+    # FINAL OUTPUT 1 - Vegetation / Species Classification
+    # ==================================================================
+
+    def save_final_vegetation_classification(self, verbose: bool = True) -> None:
+        """Full-resolution classified vegetation type map.
+
+        Each species cluster is rendered as a distinct colour on top of a
+        darkened optical base.  A legend and pixel-resolution rendering
+        ensure the output is publication quality.
+        """
+        r = self.r
+        H, W = r.height, r.width
+        fig_w = W / 100
+        fig_h = H / 100
+
+        fig, ax = plt.subplots(1, 1, figsize=(fig_w, fig_h))
+        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+
+        # Darkened base
+        base = r.optical_rgb.copy() * 0.45
+        ax.imshow(base, interpolation="nearest")
+
+        # Overlay each species cluster as a coloured semi-transparent mask
+        n_sp = max(len(r.species_legend), 1)
+        _cmap = plt.colormaps.get_cmap("tab10")
+        colours = _cmap(np.linspace(0, 0.9, max(n_sp, 2)))
+
+        for idx, (sp_id, _sp_name) in enumerate(sorted(r.species_legend.items())):
+            sp_mask = r.species_map == sp_id
+            if not sp_mask.any():
+                continue
+            rgba = np.zeros((H, W, 4), dtype=np.float32)
+            rgba[:, :, :3] = colours[idx % n_sp][:3]
+            rgba[:, :, 3] = sp_mask.astype(np.float32) * 0.70
+            ax.imshow(rgba, interpolation="nearest")
+
+        # Canopy (non-classified) in dark green
+        unclassified_canopy = r.canopy_mask & (r.species_map == 0)
+        if unclassified_canopy.any():
+            rgba_uc = np.zeros((H, W, 4), dtype=np.float32)
+            rgba_uc[:, :, 1] = 0.35
+            rgba_uc[:, :, 3] = unclassified_canopy.astype(np.float32) * 0.5
+            ax.imshow(rgba_uc, interpolation="nearest")
+
+        # Buildings in gray
+        if r.building_mask.any():
+            rgba_b = np.zeros((H, W, 4), dtype=np.float32)
+            rgba_b[:, :, :3] = 0.55
+            rgba_b[:, :, 3] = r.building_mask.astype(np.float32) * 0.55
+            ax.imshow(rgba_b, interpolation="nearest")
+
+        # Legend
+        patches = [
+            Patch(facecolor=colours[i % n_sp][:3], label=f"{sp_id}: {name}")
+            for i, (sp_id, name) in enumerate(sorted(r.species_legend.items()))
+        ]
+        patches.append(Patch(facecolor="gray", alpha=0.55, label="Buildings"))
+        if unclassified_canopy.any():
+            patches.append(Patch(facecolor=(0, 0.35, 0), alpha=0.5, label="Other Canopy"))
+        ax.legend(
+            handles=patches, loc="lower right", fontsize=max(fig_w * 0.7, 7),
+            framealpha=0.85, edgecolor="white",
+        )
+
+        ax.set_title(
+            f"Vegetation Classification  ({n_sp} groups)",
+            fontsize=max(fig_w * 1.0, 10), fontweight="bold",
+            color="white", pad=8,
+        )
+        ax.axis("off")
+
+        path = self.out / "final_vegetation_classification.png"
+        fig.savefig(str(path), dpi=100, bbox_inches="tight",
+                    facecolor="black", pad_inches=0.05)
+        plt.close(fig)
+        if verbose:
+            print(f"  PNG     : {path.name}  (hi-res)")
+
+    # ==================================================================
+    # FINAL OUTPUT 2 - Canopy Cover + Individual Crown Outlines
+    # ==================================================================
+
+    def save_final_canopy_crowns(self, verbose: bool = True) -> None:
+        """Full-resolution canopy map with red polygon outlines per tree.
+
+        The optical RGB base is shown at full pixel resolution.  Canopy
+        pixels are highlighted in green and each individual tree crown
+        polygon is drawn with a red outline.
+        """
+        r = self.r
+        H, W = r.height, r.width
+        fig_w = W / 100
+        fig_h = H / 100
+
+        fig, ax = plt.subplots(1, 1, figsize=(fig_w, fig_h))
+        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+
+        ax.imshow(r.optical_rgb, interpolation="nearest")
+
+        # Semi-transparent green canopy overlay
+        canopy_rgba = np.zeros((H, W, 4), dtype=np.float32)
+        canopy_rgba[:, :, 1] = 0.9   # green channel
+        canopy_rgba[:, :, 3] = r.canopy_mask.astype(np.float32) * 0.35
+        ax.imshow(canopy_rgba, interpolation="nearest")
+
+        # Red crown outlines
+        for _, row in r.tree_crowns.iterrows():
+            geom = row.geometry
+            if geom is None:
+                continue
+            xs, ys = geom.exterior.xy
+            pxs = [(x - r.transform.c) / r.transform.a for x in xs]
+            pys = [(y - r.transform.f) / r.transform.e for y in ys]
+            ax.plot(pxs, pys, color="red", lw=max(fig_w * 0.06, 0.5),
+                    solid_capstyle="round")
+
+        pct = 100 * r.canopy_mask.sum() / max(r.canopy_mask.size, 1)
+        n_crowns = len(r.tree_crowns)
+        ax.set_title(
+            f"Canopy Cover: {pct:.1f}%   |   {n_crowns:,} Tree Crowns",
+            fontsize=max(fig_w * 1.0, 10), fontweight="bold",
+            color="white", pad=8,
+        )
+        ax.axis("off")
+
+        path = self.out / "final_canopy_crowns.png"
+        fig.savefig(str(path), dpi=100, bbox_inches="tight",
+                    facecolor="black", pad_inches=0.05)
+        plt.close(fig)
+        if verbose:
+            print(f"  PNG     : {path.name}  (hi-res)")
+
+    # ==================================================================
+    # FINAL OUTPUT 3 - Building Footprints on RGB Imagery
+    # ==================================================================
+
+    def save_final_building_footprints(self, verbose: bool = True) -> None:
+        """Full-resolution RGB imagery with red building-footprint overlays.
+
+        Each detected building polygon is filled translucent red with a
+        solid red border, allowing the user to visually compare the
+        detection against the underlying optical imagery.
+        """
+        r = self.r
+        H, W = r.height, r.width
+        fig_w = W / 100
+        fig_h = H / 100
+
+        fig, ax = plt.subplots(1, 1, figsize=(fig_w, fig_h))
+        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+
+        ax.imshow(r.optical_rgb, interpolation="nearest")
+
+        for _, row in r.building_footprints.iterrows():
+            geom = row.geometry
+            if geom is None:
+                continue
+            xs, ys = geom.exterior.xy
+            pxs = [(x - r.transform.c) / r.transform.a for x in xs]
+            pys = [(y - r.transform.f) / r.transform.e for y in ys]
+            ax.fill(pxs, pys, alpha=0.30, fc="red", ec="red",
+                    lw=max(fig_w * 0.08, 0.6))
+
+        n = len(r.building_footprints)
+        ax.set_title(
+            f"Building Footprints: {n:,} detected",
+            fontsize=max(fig_w * 1.0, 10), fontweight="bold",
+            color="white", pad=8,
+        )
+        ax.axis("off")
+
+        path = self.out / "final_building_footprints.png"
+        fig.savefig(str(path), dpi=100, bbox_inches="tight",
+                    facecolor="black", pad_inches=0.05)
+        plt.close(fig)
+        if verbose:
+            print(f"  PNG     : {path.name}  (hi-res)")

@@ -394,7 +394,11 @@ class HiResImageryFetcher:
         return self._fetch_s2_fallback(transform, crs, height, width, verbose)
 
     def _try_naip(self, transform, crs, height, width, verbose):
-        """Fetch NAIP 4-band (R, G, B, NIR) from Planetary Computer."""
+        """Fetch NAIP 4-band (R, G, B, NIR) from Planetary Computer.
+
+        Mosaics **all** overlapping tiles from the most recent year so
+        that AOIs straddling tile boundaries do not have gaps.
+        """
         if verbose:
             print("Searching NAIP imagery …")
 
@@ -416,23 +420,45 @@ class HiResImageryFetcher:
         if not items:
             return None
 
+        # Group tiles by year — use the most-recent year that has data
+        best_year = (items[0].datetime or items[0].properties.get("datetime", ""))
+        if hasattr(best_year, "year"):
+            best_year_str = str(best_year.year)
+        else:
+            best_year_str = str(best_year)[:4]
+
+        year_items = [
+            it for it in items
+            if str(getattr(it.datetime, "year", str(it.properties.get("datetime", ""))[:4]))
+            .startswith(best_year_str[:4])
+        ]
+        if not year_items:
+            year_items = items[:1]
+
         if verbose:
-            print(f"  Found {len(items)} NAIP tiles.  Using most recent.")
+            print(f"  Found {len(items)} NAIP tiles.  Mosaicking {len(year_items)} from {best_year_str}.")
 
-        best = items[0]
-        href = best.assets["image"].href
+        # Accumulate mosaic: later tiles fill in zeros left by earlier ones
+        mosaic = np.zeros((height, width, 4), dtype=np.float32)
 
-        try:
-            rgbnir = self._read_naip_and_reproject(
-                href, transform, crs, height, width,
-            )
-            if verbose:
-                print(f"  NAIP: {rgbnir.shape[:2]} px, 4 bands @ ~0.6 m")
-            return (rgbnir, "naip", 0.6)
-        except Exception as exc:
-            if verbose:
-                print(f"  Failed to read NAIP: {exc}")
+        for it in year_items:
+            href = it.assets["image"].href
+            try:
+                tile = self._read_naip_and_reproject(
+                    href, transform, crs, height, width,
+                )
+                # Fill only where mosaic is still zero (no data yet)
+                empty_mask = mosaic.max(axis=2) < 1e-6
+                mosaic[empty_mask] = tile[empty_mask]
+            except Exception:
+                continue
+
+        if mosaic.max() < 1e-6:
             return None
+
+        if verbose:
+            print(f"  NAIP: {mosaic.shape[:2]} px, 4 bands @ ~0.6 m")
+        return (mosaic, "naip", 0.6)
 
     def _fetch_s2_fallback(self, transform, crs, height, width, verbose):
         """Sentinel-2 fallback: median R/G/B/NIR at 10 m."""
