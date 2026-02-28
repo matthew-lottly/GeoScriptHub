@@ -442,15 +442,14 @@ class OutputWriter:
         ax_rgb.set_title("Sentinel-2 True Colour", fontsize=13, fontweight="bold")
         ax_rgb.axis("off")
 
-        # Right: RGB + building polygons
+        # Right: RGB + building polygons (solid red fill + red border)
         ax_bld.imshow(rgb, interpolation="nearest")
-        self._overlay_filled_polygons(
-            ax_bld, reg, score_col="building_score",
-            cmap_name="plasma", alpha=0.45, linewidth=0.5,
-        )
         self._overlay_polygons(
-            ax_bld, reg, edgecolor="#00ff88",
-            linewidth=1.2, alpha=0.95,
+            ax_bld, reg,
+            edgecolor="#cc0000",
+            facecolor="#ff2222",
+            linewidth=1.4,
+            alpha=0.68,
         )
         n = len(reg)
         ax_bld.set_title(

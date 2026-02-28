@@ -79,6 +79,7 @@ DEFAULT_PARAMS: Dict = dict(
     pol_ratio_min=0.02,
     pol_ratio_max=0.30,
     edge_erosion_px=2,               # extra edge erosion for validity mask
+    morph_open_iterations=1,         # erosion+dilation passes (0 = skip, keeps all px)
     # -- Building regularisation ---
     min_compactness=0.15,            # Polsby-Popper floor
     min_rectangularity=0.35,         # area / MRR area floor
@@ -328,7 +329,10 @@ class SubCanopyAnalyser:
         # -- Step 7: Morphological opening -------------------------------
         if verbose:
             print("[7/9] Morphological cleaning ...")
-        clean_prob = self._morphological_open(probability, p["thresh_medium"])
+        clean_prob = self._morphological_open(
+            probability, p["thresh_medium"],
+            iterations=int(p.get("morph_open_iterations", 1)),
+        )
 
         # -- Step 8: Vectorise footprints --------------------------------
         if verbose:
@@ -723,11 +727,17 @@ class SubCanopyAnalyser:
         Opening erodes small isolated detections that are unlikely to represent
         real structures, then restores the shape of larger connected blobs.
         The threshold determines which pixels enter the binary mask.
+
+        Set *iterations=0* to skip morphological opening entirely and preserve
+        sub-pixel-scale detections (e.g. individual houses at 10 m SAR).
         """
         binary = (~np.isnan(probability)) & (probability >= threshold)
-        struct = np.ones((3, 3), dtype=bool)
-        eroded  = binary_erosion(binary, structure=struct, iterations=iterations)
-        dilated = binary_dilation(eroded, structure=struct, iterations=iterations)
+        if iterations > 0:
+            struct = np.ones((3, 3), dtype=bool)
+            eroded  = binary_erosion(binary, structure=struct, iterations=iterations)
+            dilated = binary_dilation(eroded, structure=struct, iterations=iterations)
+        else:
+            dilated = binary
         # Re-apply probability values only where the cleaned mask is True
         return np.where(dilated, probability, np.nan)
 

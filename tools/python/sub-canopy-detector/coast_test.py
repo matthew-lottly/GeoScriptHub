@@ -69,18 +69,20 @@ analyser = SubCanopyAnalyser(
     aoi                   = AOI,
     imagery               = imagery,
     # -- Spectral / mask thresholds --
-    forest_ndvi_threshold = 0.45,   # Lower: catch forest-edge buildings
+    forest_ndvi_threshold = 0.25,   # Low: include open residential + mixed pixels
     water_ndwi_threshold  = 0.08,   # Aggressive water masking for tidal zone
     stability_floor       = 0.65,
     # -- Detection thresholds --
-    thresh_high           = 0.60,
-    thresh_medium         = 0.40,
-    min_footprint_area    = 50,
+    thresh_high           = 0.58,
+    thresh_medium         = 0.38,
+    min_footprint_area    = 35,     # Small: catch ~3-4 px houses at 10 m
+    morph_open_iterations = 0,      # Disable opening -- preserves sub-pixel detections;
+                                    # geometric filters in regularisation clean noise
     # -- Building regularisation (tighter for coastal noise) --
     min_compactness       = 0.18,   # Kills fractal tidal shapes
     min_solidity          = 0.45,   # Kills branching channel outlines
     min_building_score    = 0.38,   # Stricter score gate
-    max_footprint_area    = 15000,  # Smaller ceiling for coastal area
+    max_footprint_area    = 12000,  # Smaller ceiling for coastal area
     max_aspect_ratio      = 8.0,
 )
 
