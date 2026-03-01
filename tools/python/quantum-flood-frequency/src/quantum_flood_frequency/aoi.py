@@ -1,16 +1,15 @@
 """
 aoi.py
 ======
-Define the Area of Interest for the Mississippi River flood study.
+Define the Area of Interest for the Houston, TX flood study.
 
-The default AOI is centred approximately 5 statute miles (~8 km)
-upstream from the river mouth (Head of Passes, LA — 29.15°N, 89.25°W).
-A rectangular bounding box spans the main channel and adjacent
-floodplain to capture meaningful inundation dynamics.
+The default AOI is centred on Houston, Texas (29.76°N, 95.37°W),
+a metropolitan area with significant flood exposure along Buffalo
+Bayou, Brays Bayou, and surrounding watersheds.
 
 All coordinates are returned in both WGS-84 (EPSG:4326) for STAC
-queries and in the appropriate UTM zone (EPSG:32615 — UTM 15N) for
-raster analysis at metre-level precision.
+queries and in the appropriate UTM zone (EPSG:15N) for raster
+analysis at metre-level precision.
 """
 
 from __future__ import annotations
@@ -26,17 +25,16 @@ from pyproj import Transformer
 logger = logging.getLogger("geoscripthub.quantum_flood_frequency.aoi")
 
 # ---------------------------------------------------------------------------
-# Mississippi River — ~5 miles upstream from Head of Passes
-# Head of Passes ≈ 29.15°N, 89.25°W
-# 5 statute miles upstream ≈ 29.22°N along the channel
-# We define a generous bbox to capture channel + adjacent floodplain
+# Houston, TX — flood-prone metropolitan area
+# Downtown Houston ≈ 29.76°N, 95.37°W
+# Covers Buffalo Bayou, Brays Bayou, and surrounding watersheds
 # ---------------------------------------------------------------------------
-_DEFAULT_CENTER_LAT = 29.22
-_DEFAULT_CENTER_LON = -89.25
+_DEFAULT_CENTER_LAT = 29.76
+_DEFAULT_CENTER_LON = -95.37
 _DEFAULT_BUFFER_KM = 5.0  # ~5 km in each direction from centre
 
 # Target CRS for all raster processing
-TARGET_CRS = "EPSG:32615"  # UTM Zone 15N (covers lower Mississippi)
+TARGET_CRS = "EPSG:32615"  # UTM Zone 15N (covers Houston, TX)
 WGS84 = "EPSG:4326"
 
 
@@ -67,9 +65,9 @@ class AOIResult:
 
 
 class AOIBuilder:
-    """Construct the study-area bounding box for the Mississippi River.
+    """Construct the study-area bounding box for the Houston flood study.
 
-    The default configuration targets ~5 miles upstream from the coast.
+    The default configuration targets central Houston, TX.
     Users may override the centre coordinates and buffer distance.
 
     Parameters
@@ -145,7 +143,7 @@ class AOIBuilder:
             center_lon=self.center_lon,
             area_km2=area_km2,
             description=(
-                f"Mississippi River ~5 mi upstream from coast, "
+                f"Houston, TX flood study area, "
                 f"centred at ({self.center_lat:.4f}°N, {abs(self.center_lon):.4f}°W), "
                 f"≈{area_km2:.1f} km²"
             ),

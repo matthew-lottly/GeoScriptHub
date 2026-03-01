@@ -10,7 +10,7 @@ Usage::
         --max-cloud 15 --verbose
 
     quantum-flood-frequency run --output ./outputs/flood \\
-        --center-lat 29.22 --center-lon -89.25 --buffer-km 5 \\
+        --center-lat 29.76 --center-lon -95.37 --buffer-km 5 \\
         --no-quantum-svm   # faster run without QK-SVM
 """
 
@@ -27,13 +27,13 @@ logger = logging.getLogger("geoscripthub.quantum_flood_frequency.cli")
 
 
 @click.group()
-@click.version_option(version="1.0.0", prog_name="quantum-flood-frequency")
+@click.version_option(version="2.0.0", prog_name="quantum-flood-frequency")
 def main() -> None:
-    """Pseudo-Quantum Hybrid AI Flood Frequency Mapper.
+    """Pseudo-Quantum Hybrid AI Flood Frequency Mapper v2.0.
 
     Fuses Landsat, Sentinel-2 and NAIP imagery with quantum-inspired
-    classification to map flood inundation frequency on the Mississippi
-    River.
+    classification and super-resolution upsampling to map flood
+    inundation frequency at 10 m resolution in Houston, TX.
     """
 
 
@@ -48,14 +48,14 @@ def main() -> None:
 @click.option(
     "--center-lat",
     type=float,
-    default=29.22,
+    default=29.76,
     show_default=True,
-    help="AOI centre latitude (WGS-84).  Default ≈ 5 mi upstream of Head of Passes, LA.",
+    help="AOI centre latitude (WGS-84).  Default: Houston, TX.",
 )
 @click.option(
     "--center-lon",
     type=float,
-    default=-89.25,
+    default=-95.37,
     show_default=True,
     help="AOI centre longitude (WGS-84).",
 )
@@ -94,6 +94,26 @@ def main() -> None:
     help="Enable/disable the Quantum Kernel SVM component (slower but more accurate).",
 )
 @click.option(
+    "--resolution",
+    type=int,
+    default=10,
+    show_default=True,
+    help="Target analysis resolution in metres (10=super-resolve, 30=legacy).",
+)
+@click.option(
+    "--sr-method",
+    type=click.Choice(["bicubic", "spectral_guided", "learned"], case_sensitive=False),
+    default="spectral_guided",
+    show_default=True,
+    help="Super-resolution method for upsampling coarse imagery.",
+)
+@click.option(
+    "--meta-learner/--no-meta-learner",
+    default=True,
+    show_default=True,
+    help="Use Ridge meta-learner for ensemble fusion (vs fixed Bayesian average).",
+)
+@click.option(
     "--verbose", "-v",
     is_flag=True,
     default=False,
@@ -108,15 +128,18 @@ def run(
     end_date: str,
     max_cloud: int,
     quantum_svm: bool,
+    resolution: int,
+    sr_method: str,
+    meta_learner: bool,
     verbose: bool,
 ) -> None:
     """Run the full flood frequency analysis pipeline.
 
     Steps:
-      1. Build AOI around the Mississippi River
+      1. Build AOI around Houston, TX
       2. Acquire Landsat, Sentinel-2, NAIP imagery from Planetary Computer
-      3. Preprocess: resample → align → cloud-mask → normalise
-      4. Classify water via Quantum-Inspired Ensemble (QIEC)
+      3. Super-resolve & align to 10 m grid (sample UP, not down)
+      4. Classify water via 3-qubit Quantum-Inspired Ensemble (QIEC v2.0)
       5. Aggregate into flood frequency surface
       6. Fetch FEMA flood zones for comparison
       7. Generate maps, rasters, and interactive viewer
@@ -140,7 +163,7 @@ def run(
         fg="cyan", bold=True,
     )
     click.secho(
-        "║   Pseudo-Quantum Hybrid AI Flood Frequency Mapper  v1.0   ║",
+        "║   Pseudo-Quantum Hybrid AI Flood Frequency Mapper  v2.0   ║",
         fg="cyan", bold=True,
     )
     click.secho(
@@ -156,6 +179,15 @@ def run(
     from .flood_engine import FloodFrequencyEngine
     from .fema import FEMAFloodZones
     from .viz import FloodMapper
+    from .super_resolution import SRMethod
+
+    # Map CLI string to SRMethod enum
+    sr_method_map = {
+        "bicubic": SRMethod.BICUBIC,
+        "spectral_guided": SRMethod.SPECTRAL_GUIDED,
+        "learned": SRMethod.LEARNED_SISR,
+    }
+    sr_enum = sr_method_map.get(sr_method, SRMethod.SPECTRAL_GUIDED)
 
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
@@ -180,9 +212,16 @@ def run(
     sensor_stack = acquisition.fetch_all()
     click.echo(f"  {sensor_stack}")
 
-    # --- Step 3: Preprocessing ---
-    click.secho("\n▶ Step 3/7: Preprocessing & alignment (30 m grid) …", fg="yellow", bold=True)
-    preprocessor = ImagePreprocessor(aoi=aoi)
+    # --- Step 3: Preprocessing (super-resolution) ---
+    click.secho(
+        f"\n▶ Step 3/7: Super-resolve & align to {resolution} m grid …",
+        fg="yellow", bold=True,
+    )
+    preprocessor = ImagePreprocessor(
+        aoi=aoi,
+        target_resolution=resolution,
+        sr_method=sr_enum,
+    )
     aligned = preprocessor.align(
         landsat=sensor_stack.landsat,
         sentinel2=sensor_stack.sentinel2,
@@ -190,9 +229,12 @@ def run(
     )
     click.echo(f"  {aligned}")
 
-    # --- Step 4: Quantum-hybrid classification ---
-    click.secho("\n▶ Step 4/7: Quantum-Inspired Ensemble Classification …", fg="yellow", bold=True)
-    classifier = QuantumHybridClassifier(use_quantum_svm=quantum_svm)
+    # --- Step 4: Quantum-hybrid classification (v2.0: 3-qubit) ---
+    click.secho("\n▶ Step 4/7: 3-Qubit Quantum-Inspired Ensemble Classification …", fg="yellow", bold=True)
+    classifier = QuantumHybridClassifier(
+        use_quantum_svm=quantum_svm,
+        use_meta_learner=meta_learner,
+    )
     classifications = classifier.classify_stack(aligned)
     click.echo(f"  Classified {len(classifications)} observations")
 
@@ -214,7 +256,18 @@ def run(
         fema_gdf = fema.fetch()
         click.echo(f"  FEMA zones: {len(fema_gdf)} polygons")
         if not fema_gdf.empty:
+            # Per-category summary
+            click.echo(f"    Floodway:  {len(fema.floodway)} polygons")
+            click.echo(f"    100-year:  {len(fema.zones_100yr)} polygons")
+            click.echo(f"    500-year:  {len(fema.zones_500yr)} polygons")
+
+            # Save combined GeoJSON
             fema.save_geojson(output / "fema_flood_zones.geojson")
+
+            # Save individual ESRI Shapefiles
+            shp_paths = fema.save_shapefiles(output)
+            for cat, shp_path in shp_paths.items():
+                click.echo(f"    Shapefile: {shp_path.name}  ({cat})")
     except Exception as exc:
         click.secho(f"  FEMA data unavailable: {exc}", fg="red")
 
@@ -242,6 +295,9 @@ def run(
         f"  Confidence:        confidence_bounds.tif\n"
         f"  Frequency map:     flood_frequency_map.png\n"
         f"  FEMA comparison:   fema_comparison_map.png\n"
+        f"  FEMA shapefiles:   fema/fema_floodway.shp\n"
+        f"                     fema/fema_100yr.shp\n"
+        f"                     fema/fema_500yr.shp\n"
         f"  Interactive map:   interactive_flood_map.html\n"
         f"  Statistics:        observation_stats.png"
     )

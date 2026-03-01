@@ -2,7 +2,7 @@
 
 **Pseudo-Quantum Hybrid AI Flood Inundation Frequency Analysis**
 
-A state-of-the-art tool that fuses **Landsat 8/9**, **Sentinel-2**, and **NAIP** satellite/aerial imagery with a novel **Quantum-Inspired Ensemble Classification (QIEC)** framework to produce per-pixel flood inundation frequency maps for the Mississippi River.
+A state-of-the-art tool that fuses **Landsat 8/9**, **Sentinel-2**, and **NAIP** satellite/aerial imagery with a novel **Quantum-Inspired Ensemble Classification (QIEC)** framework to produce per-pixel flood inundation frequency maps for Houston, TX.
 
 ## Overview
 
@@ -10,7 +10,7 @@ This tool addresses a gap in current flood mapping: most existing methods rely o
 
 ### Study Area
 
-The default study area targets **~5 statute miles upstream from the Mississippi River mouth** (Head of Passes, Louisiana — 29.22°N, 89.25°W), covering the main channel and adjacent floodplain within a 10 × 10 km bounding box.
+The default study area targets **Houston, Texas** (29.76°N, 95.37°W), covering Buffalo Bayou, Brays Bayou, and surrounding flood-prone watersheds within a 10 × 10 km bounding box.
 
 ## Architecture
 
@@ -168,12 +168,12 @@ pip install -e ".[dev]"
 ### CLI
 
 ```bash
-# Full pipeline with defaults (Mississippi River, 2015–2025, ≤15% cloud)
+# Full pipeline with defaults (Houston, TX, 2015–2025, ≤15% cloud)
 quantum-flood-frequency run --output ./outputs/flood --verbose
 
 # Custom area and parameters
 quantum-flood-frequency run \
-    --center-lat 29.22 --center-lon -89.25 \
+    --center-lat 29.76 --center-lon -95.37 \
     --buffer-km 5 \
     --start-date 2018-01-01 --end-date 2025-12-31 \
     --max-cloud 10 \
@@ -197,7 +197,7 @@ from quantum_flood_frequency import (
 )
 
 # 1. Define AOI
-aoi = AOIBuilder(center_lat=29.22, center_lon=-89.25, buffer_km=5).build()
+aoi = AOIBuilder(center_lat=29.76, center_lon=-95.37, buffer_km=5).build()
 
 # 2. Acquire imagery
 stack = MultiSensorAcquisition(aoi, start_date="2015-01-01", end_date="2025-12-31").fetch_all()

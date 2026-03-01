@@ -27,6 +27,7 @@ The output frequency raster is a float32 GeoTIFF with values in
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -135,7 +136,7 @@ class FloodFrequencyEngine:
 
     def compute(
         self,
-        classifications: list[ClassificationResult],
+        classifications: Sequence[ClassificationResult],
     ) -> FrequencyResult:
         """Compute flood inundation frequency from classified observations.
 
@@ -309,8 +310,8 @@ class FloodFrequencyEngine:
                 total_observations=int(result.observation_count.max()),
                 sensors=str(result.sensor_counts),
                 crs=result.crs,
-                tool="quantum-flood-frequency v1.0.0",
-                method="Pseudo-Quantum Hybrid AI Classification (QIEC)",
+                tool="quantum-flood-frequency v2.0.0",
+                method="Pseudo-Quantum Hybrid AI Classification (QIEC v2.0 — 3-qubit, 10 m SR)",
             )
 
         logger.info("Frequency raster saved → %s", output_path)

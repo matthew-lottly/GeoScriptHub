@@ -39,8 +39,8 @@ class TestAOIBuilder:
     def test_default_aoi_builds(self) -> None:
         aoi = AOIBuilder().build()
 
-        assert aoi.center_lat == pytest.approx(29.22, abs=0.01)
-        assert aoi.center_lon == pytest.approx(-89.25, abs=0.01)
+        assert aoi.center_lat == pytest.approx(29.76, abs=0.01)
+        assert aoi.center_lon == pytest.approx(-95.37, abs=0.01)
         assert aoi.target_crs == "EPSG:32615"
         assert aoi.area_km2 > 0
 
@@ -167,13 +167,13 @@ class TestQuantumFeatureEncoder:
         # The encoder must produce different outputs for different inputs
         assert p_water[0, 0] != pytest.approx(p_land[0, 0], abs=1e-3)
 
-    def test_quantum_mixing_gate_is_unitary(self) -> None:
+    def test_quantum_circuit_unitary_is_unitary(self) -> None:
         qfe = QuantumFeatureEncoder()
-        U = qfe._mixing_gate
+        U = qfe._circuit_unitary
 
-        # Unitary check: U† · U = I
+        # Unitary check: U† · U = I (8×8 for 3-qubit system)
         identity = U.conj().T @ U
-        np.testing.assert_allclose(identity, np.eye(4), atol=1e-12)
+        np.testing.assert_allclose(identity, np.eye(8), atol=1e-12)
 
 
 # ---------------------------------------------------------------------------

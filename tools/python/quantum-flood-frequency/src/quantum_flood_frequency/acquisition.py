@@ -56,7 +56,7 @@ LANDSAT_RESOLUTION = 30  # metres
 
 # Sentinel-2 L2A bands relevant for water detection
 S2_BANDS = ["B02", "B03", "B04", "B08", "B11", "B12", "SCL"]
-S2_RESOLUTION = 20  # metres — we use 20 m to capture SWIR bands natively
+S2_RESOLUTION = 10  # metres — fetch at 10 m (native optical), SWIR upsampled in preprocessing
 
 # NAIP — 4-band (R, G, B, NIR) at ~1 m
 NAIP_BANDS = ["image"]  # NAIP stores all 4 bands in a single asset

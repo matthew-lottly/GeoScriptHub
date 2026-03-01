@@ -5,10 +5,10 @@ Cartographic visualisation for flood frequency results.
 
 Produces publication-quality maps:
 
-1. **Flood Frequency Map** — continuous colour ramp from yellow
-   (rarely flooded) through orange → red → dark blue (permanently
-   inundated), with the study-area boundary, scale bar, and north
-   arrow.
+1. **Flood Frequency Map** — continuous colour ramp from white
+   (never flooded) through progressively darker blues to navy
+   (permanently inundated), with the study-area boundary, scale
+   bar, and north arrow.
 
 2. **FEMA Comparison Map** — same frequency surface with FEMA NFHL
    flood zone polygons overlaid at 40 % transparency for direct
@@ -50,7 +50,15 @@ except ImportError:
 import geopandas as gpd
 
 from .flood_engine import FrequencyResult
-from .fema import FEMAFloodZones, FEMA_COLORS, FEMA_DEFAULT_COLOR
+from .fema import (
+    FEMAFloodZones,
+    FEMA_COLORS,
+    FEMA_DEFAULT_COLOR,
+    FEMA_CATEGORY_COLORS,
+    CATEGORY_FLOODWAY,
+    CATEGORY_100_YEAR,
+    CATEGORY_500_YEAR,
+)
 from .aoi import AOIResult
 
 logger = logging.getLogger("geoscripthub.quantum_flood_frequency.viz")
@@ -61,27 +69,27 @@ logger = logging.getLogger("geoscripthub.quantum_flood_frequency.viz")
 # ---------------------------------------------------------------------------
 
 def _flood_frequency_cmap() -> mcolors.LinearSegmentedColormap:
-    """Build a perceptually-uniform flood frequency colour ramp.
+    """Build a perceptually-uniform blues-based flood frequency colour ramp.
 
-    Palette progression:
-        0.00 → tan/beige  (dry land, never flooded)
-        0.05 → pale yellow (very rarely flooded)
-        0.15 → gold        (rarely flooded)
-        0.30 → orange      (occasionally flooded)
-        0.50 → red-orange  (frequently flooded)
-        0.70 → crimson     (very frequently flooded)
+    Palette progression (white → dark blue):
+        0.00 → white       (dry land, never flooded)
+        0.05 → very pale blue
+        0.15 → light blue
+        0.30 → sky blue
+        0.50 → medium blue
+        0.70 → royal blue
         0.90 → dark blue   (almost always water)
         1.00 → navy        (permanent water)
     """
     colours = [
-        (0.00, "#F5DEB3"),  # wheat — dry
-        (0.05, "#FFF176"),  # pale yellow
-        (0.15, "#FFD54F"),  # gold
-        (0.30, "#FF9800"),  # orange
-        (0.50, "#F44336"),  # red
-        (0.70, "#C62828"),  # dark red
-        (0.90, "#1565C0"),  # blue
-        (1.00, "#0D47A1"),  # navy
+        (0.00, "#FFFFFF"),  # white — dry
+        (0.05, "#E3F2FD"),  # very pale blue
+        (0.15, "#BBDEFB"),  # light blue
+        (0.30, "#64B5F6"),  # sky blue
+        (0.50, "#2196F3"),  # medium blue
+        (0.70, "#1565C0"),  # royal blue
+        (0.90, "#0D47A1"),  # dark blue
+        (1.00, "#0A1929"),  # near-black navy
     ]
     positions = [c[0] for c in colours]
     hex_colors = [c[1] for c in colours]
@@ -176,7 +184,7 @@ class FloodMapper:
         # Title and labels
         ax.set_title(
             "Pseudo-Quantum Hybrid AI Flood Frequency Map\n"
-            f"Mississippi River — {self.aoi.description}",
+            f"Houston, TX — {self.aoi.description}",
             fontsize=13, fontweight="bold",
         )
         ax.set_xlabel("Easting (m)", fontsize=10)
@@ -184,10 +192,10 @@ class FloodMapper:
 
         # Legend for zone categories
         legend_patches = [
-            mpatches.Patch(facecolor="#0D47A1", label=f"Permanent (≥{90}%)"),
-            mpatches.Patch(facecolor="#C62828", label=f"Seasonal ({25}–{90}%)"),
-            mpatches.Patch(facecolor="#FF9800", label=f"Rare ({5}–{25}%)"),
-            mpatches.Patch(facecolor="#F5DEB3", label=f"Dry (<{5}%)"),
+            mpatches.Patch(facecolor="#0A1929", label=f"Permanent (≥{90}%)"),
+            mpatches.Patch(facecolor="#1565C0", label=f"Seasonal ({25}–{90}%)"),
+            mpatches.Patch(facecolor="#64B5F6", label=f"Rare ({5}–{25}%)"),
+            mpatches.Patch(facecolor="#FFFFFF", edgecolor="#999", label=f"Dry (<{5}%)"),
         ]
         ax.legend(
             handles=legend_patches,
@@ -202,8 +210,8 @@ class FloodMapper:
         sensors = self.result.sensor_counts
         ax.annotate(
             f"Observations: {n_obs}  |  Sensors: {sensors}\n"
-            f"CRS: {self.result.crs}  |  Resolution: 30 m\n"
-            f"Method: QIEC (Quantum-Inspired Ensemble Classification)",
+            f"CRS: {self.result.crs}  |  Resolution: 10 m (super-resolved)\n"
+            f"Method: QIEC v2.0 (3-Qubit Quantum-Inspired Ensemble, SR upsampled)",
             xy=(0.01, 0.01), xycoords="axes fraction",
             fontsize=7, va="bottom",
             bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8),
@@ -263,32 +271,42 @@ class FloodMapper:
             interpolation="nearest",
         )
 
-        # Overlay FEMA flood zones
+        # Overlay FEMA flood zones — grouped by regulatory category
         fema_gdf = self.fema.zones if self.fema else None
         fema_legend_patches: list[mpatches.Patch] = []
 
-        if fema_gdf is not None and not fema_gdf.empty and "FLD_ZONE" in fema_gdf.columns:
-            for zone_code in fema_gdf["FLD_ZONE"].unique():
-                subset = fema_gdf[fema_gdf["FLD_ZONE"] == zone_code]
-                color = FEMAFloodZones.get_zone_color(zone_code)
+        _CAT_RENDER = [
+            (CATEGORY_FLOODWAY, "Floodway",       "xxx"),
+            (CATEGORY_100_YEAR, "100-yr (SFHA)",   "///"),
+            (CATEGORY_500_YEAR, "500-yr (0.2 %)",  "..."),
+        ]
 
+        if (
+            fema_gdf is not None
+            and not fema_gdf.empty
+            and "flood_category" in fema_gdf.columns
+        ):
+            for cat, label, hatch in _CAT_RENDER:
+                subset = fema_gdf[fema_gdf["flood_category"] == cat]
+                if subset.empty:
+                    continue
+                color = FEMAFloodZones.get_category_color(cat)
                 subset.plot(
                     ax=ax,
                     facecolor=color[:3],
                     edgecolor="black",
                     linewidth=0.5,
-                    alpha=color[3],  # semi-transparent
-                    hatch="///",
+                    alpha=color[3],
+                    hatch=hatch,
                 )
-
                 fema_legend_patches.append(
                     mpatches.Patch(
                         facecolor=color[:3],
                         alpha=color[3],
                         edgecolor="black",
                         linewidth=0.5,
-                        label=f"FEMA Zone {zone_code}",
-                        hatch="///",
+                        label=f"FEMA {label}",
+                        hatch=hatch,
                     )
                 )
         else:
@@ -309,7 +327,7 @@ class FloodMapper:
         # Title
         ax.set_title(
             "Flood Frequency vs. FEMA National Flood Hazard Layer\n"
-            f"Mississippi River — {self.aoi.description}",
+            f"Houston, TX — {self.aoi.description}",
             fontsize=13, fontweight="bold",
         )
         ax.set_xlabel("Easting (m)", fontsize=10)
@@ -317,9 +335,9 @@ class FloodMapper:
 
         # Combined legend
         freq_patches = [
-            mpatches.Patch(facecolor="#0D47A1", label="Permanent water (≥90%)"),
-            mpatches.Patch(facecolor="#FF9800", label="Seasonal/rare flood"),
-            mpatches.Patch(facecolor="#F5DEB3", label="Dry land"),
+            mpatches.Patch(facecolor="#0A1929", label="Permanent water (≥90%)"),
+            mpatches.Patch(facecolor="#2196F3", label="Seasonal/rare flood"),
+            mpatches.Patch(facecolor="#FFFFFF", edgecolor="#999", label="Dry land"),
         ]
         all_patches = freq_patches + fema_legend_patches
         ax.legend(
@@ -333,8 +351,8 @@ class FloodMapper:
 
         # Metadata
         ax.annotate(
-            "Frequency: QIEC hybrid model  |  Overlay: FEMA NFHL (hatched, 40% opacity)\n"
-            f"CRS: {self.result.crs}  |  Resolution: 30 m",
+            "Frequency: QIEC v2.0 hybrid model  |  Overlay: FEMA NFHL (hatched, 40% opacity)\n"
+            f"CRS: {self.result.crs}  |  Resolution: 10 m (super-resolved)",
             xy=(0.01, 0.01), xycoords="axes fraction",
             fontsize=7, va="bottom",
             bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8),
@@ -402,36 +420,52 @@ class FloodMapper:
             interactive=True,
         ).add_to(m)
 
-        # FEMA overlay if available
+        # FEMA overlay — one layer per regulatory category
         fema_gdf = self.fema.zones if self.fema else None
-        if fema_gdf is not None and not fema_gdf.empty:
+        if fema_gdf is not None and not fema_gdf.empty and "flood_category" in fema_gdf.columns:
             fema_wgs84 = fema_gdf.to_crs("EPSG:4326")
 
-            def style_fema(feature: dict) -> dict:
-                zone = feature.get("properties", {}).get("FLD_ZONE", "")
-                color_rgba = FEMAFloodZones.get_zone_color(zone)
-                hex_color = mcolors.to_hex(color_rgba[:3])
-                return {
-                    "fillColor": hex_color,
-                    "fillOpacity": 0.35,
-                    "color": "#333",
-                    "weight": 1,
-                }
+            _CAT_HEX = {
+                CATEGORY_FLOODWAY: ("#CC0000", 0.50, "Floodway"),
+                CATEGORY_100_YEAR: ("#0033E6", 0.40, "100-yr (SFHA)"),
+                CATEGORY_500_YEAR: ("#FF9900", 0.30, "500-yr"),
+            }
 
-            folium.GeoJson(
-                fema_wgs84.__geo_interface__,
-                name="FEMA Flood Zones",
-                style_function=style_fema,
-                tooltip=folium.GeoJsonTooltip(
-                    fields=["FLD_ZONE", "risk_level"],
-                    aliases=["FEMA Zone", "Risk Level"],
-                ),
-            ).add_to(m)
+            for cat, (hex_clr, opacity, label) in _CAT_HEX.items():
+                cat_gdf = fema_wgs84[fema_wgs84["flood_category"] == cat]
+                if cat_gdf.empty:
+                    continue
+
+                def _make_style(hx: str, op: float):  # noqa: E306
+                    def style_fn(feature: dict) -> dict:
+                        return {
+                            "fillColor": hx,
+                            "fillOpacity": op,
+                            "color": "#333",
+                            "weight": 1,
+                        }
+                    return style_fn
+
+                tooltip_fields = ["FLD_ZONE", "flood_category"]
+                tooltip_aliases = ["FEMA Zone", "Category"]
+                if "ZONE_SUBTY" in cat_gdf.columns:
+                    tooltip_fields.append("ZONE_SUBTY")
+                    tooltip_aliases.append("Subtype")
+
+                folium.GeoJson(
+                    cat_gdf.__geo_interface__,
+                    name=f"FEMA {label}",
+                    style_function=_make_style(hex_clr, opacity),
+                    tooltip=folium.GeoJsonTooltip(
+                        fields=tooltip_fields,
+                        aliases=tooltip_aliases,
+                    ),
+                ).add_to(m)
 
         # Colour legend
         colormap = LinearColormap(
-            colors=["#F5DEB3", "#FFF176", "#FFD54F", "#FF9800",
-                     "#F44336", "#C62828", "#1565C0", "#0D47A1"],
+            colors=["#FFFFFF", "#E3F2FD", "#BBDEFB", "#64B5F6",
+                     "#2196F3", "#1565C0", "#0D47A1", "#0A1929"],
             vmin=0, vmax=100,
             caption="Inundation Frequency (%)",
         )
@@ -442,8 +476,79 @@ class FloodMapper:
         out_path = self.output_dir / "interactive_flood_map.html"
         m.save(str(out_path))
 
+        # Post-process HTML to fix accessibility and compatibility issues
+        self._patch_html(out_path)
+
         logger.info("Interactive map saved → %s", out_path)
         return out_path
+
+    @staticmethod
+    def _patch_html(path: Path) -> None:
+        """Fix folium-generated HTML for accessibility and Edge compat.
+
+        Addresses:
+        - Missing lang attribute on <html>
+        - Missing <title> element
+        - Long-form charset meta → short form
+        - viewport: removes maximum-scale and user-scalable=no
+        - Keeps only Edge/Chromium-safe image-rendering declarations
+        - Ensures -webkit-optimize-contrast for Edge 79+
+        """
+        html = path.read_text(encoding="utf-8")
+
+        # 1. Add lang attribute
+        html = html.replace('<html>', '<html lang="en">', 1)
+
+        # 2. Add <title> after <head>
+        if "<title>" not in html:
+            html = html.replace(
+                "<head>",
+                "<head>\n    <title>Flood Frequency — Interactive Map</title>",
+                1,
+            )
+
+        # 3. Short-form charset
+        html = html.replace(
+            '<meta http-equiv="content-type" content="text/html; charset=UTF-8" />',
+            '<meta charset="utf-8" />',
+        )
+
+        # 4. Fix viewport — remove maximum-scale and user-scalable
+        import re
+
+        html = re.sub(
+            r'<meta\s+name="viewport"\s+content="[^"]*?"',
+            '<meta name="viewport" content="width=device-width, initial-scale=1.0"',
+            html,
+            flags=re.DOTALL,
+        )
+
+        # 5. Fix CSS image-rendering block:
+        #    - Keep only Edge/Chromium-safe declarations
+        #    - Ensure -webkit-optimize-contrast for Edge 79+
+        replacement_css = (
+            "{indent}image-rendering: -webkit-optimize-contrast; /* Edge 79+ */\n"
+            "{indent}image-rendering: pixelated; /* Chrome */\n"
+        )
+
+        def _fix_image_rendering(m: re.Match) -> str:  # type: ignore[type-arg]
+            # Detect indentation from the matched block
+            for line in m.group(0).splitlines():
+                stripped = line.lstrip()
+                if stripped.startswith("image-rendering:"):
+                    indent = line[: len(line) - len(stripped)]
+                    return replacement_css.format(indent=indent)
+            return replacement_css.format(indent="")
+
+        html = re.sub(
+            r"(?:[ \t]*/\*[^\n]*?\*/[ \t]*\n)?"       # optional comment-only line
+            r"[ \t]*image-rendering:\s*-webkit-[^\n]+\n"  # -webkit line (full line)
+            r"(?:[ \t]*image-rendering:[^\n]+\n)*",        # remaining image-rendering lines
+            _fix_image_rendering,
+            html,
+        )
+
+        path.write_text(html, encoding="utf-8")
 
     # ------------------------------------------------------------------
     # 4. Observation statistics chart
