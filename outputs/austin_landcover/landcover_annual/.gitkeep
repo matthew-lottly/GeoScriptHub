@@ -1,0 +1,2 @@
+# Annual Cloud-Optimised GeoTIFF landcover maps (one per year, 1990–2025).
+# Files are named landcover_YYYY.tif, EPSG:32614, int8 class labels 1–12.

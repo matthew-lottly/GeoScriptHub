@@ -100,6 +100,13 @@
     transition: width 1s ease;
     background: linear-gradient(90deg, var(--green), #34D399);
   }
+  .w-92 { width: 92%; }
+  .dot-green { background: var(--green); }
+  .dot-yellow { background: var(--yellow); }
+  .dot-red { background: var(--red); }
+  .dot-grey { background: var(--grey); }
+  .bg-green { background: #10B981; }
+  .bg-yellow { background: #F59E0B; }
 
   /* --- Pipeline container --- */
   .pipeline {
@@ -296,13 +303,13 @@
 </div>
 
 <div class="progress-wrap">
-  <div class="progress-fill" style="width:92%;"></div>
+  <div class="progress-fill w-92"></div>
 </div>
 
 <div class="pipeline">
 <div class="group group-green">
   <div class="group-header">
-    <div class="group-indicator" style="background:#10B981;"></div>
+    <div class="group-indicator bg-green"></div>
     <div class="group-titles">
       <div class="group-label">Input</div>
       <div class="group-sublabel">Study Area</div>
@@ -310,7 +317,7 @@
   </div>
   <div class="group-nodes">
   <div class="node status-green" data-status="green">
-    <div class="node-accent" style="background:#10B981;"></div>
+    <div class="node-accent bg-green"></div>
     <div class="node-body">
       <div class="node-icon">🌐</div>
       <div class="node-content">
@@ -325,7 +332,7 @@
 <div class="connector"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 4v14M6 14l6 6 6-6" stroke="#475569" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
 <div class="group group-green">
   <div class="group-header">
-    <div class="group-indicator" style="background:#10B981;"></div>
+    <div class="group-indicator bg-green"></div>
     <div class="group-titles">
       <div class="group-label">Data Acquisition</div>
       <div class="group-sublabel">Multi-Sensor Imagery</div>
@@ -333,7 +340,7 @@
   </div>
   <div class="group-nodes">
   <div class="node status-green" data-status="green">
-    <div class="node-accent" style="background:#10B981;"></div>
+    <div class="node-accent bg-green"></div>
     <div class="node-body">
       <div class="node-icon">🛰️</div>
       <div class="node-content">
@@ -344,7 +351,7 @@
     </div>
   </div>
   <div class="node status-green" data-status="green">
-    <div class="node-accent" style="background:#10B981;"></div>
+    <div class="node-accent bg-green"></div>
     <div class="node-body">
       <div class="node-icon">🛰️</div>
       <div class="node-content">
@@ -355,7 +362,7 @@
     </div>
   </div>
   <div class="node status-green" data-status="green">
-    <div class="node-accent" style="background:#10B981;"></div>
+    <div class="node-accent bg-green"></div>
     <div class="node-body">
       <div class="node-icon">✈️</div>
       <div class="node-content">
@@ -366,7 +373,7 @@
     </div>
   </div>
   <div class="node status-green" data-status="green">
-    <div class="node-accent" style="background:#10B981;"></div>
+    <div class="node-accent bg-green"></div>
     <div class="node-body">
       <div class="node-icon">📡</div>
       <div class="node-content">
@@ -377,7 +384,7 @@
     </div>
   </div>
   <div class="node status-green" data-status="green">
-    <div class="node-accent" style="background:#10B981;"></div>
+    <div class="node-accent bg-green"></div>
     <div class="node-body">
       <div class="node-icon">⛰️</div>
       <div class="node-content">
@@ -392,7 +399,7 @@
 <div class="connector"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 4v14M6 14l6 6 6-6" stroke="#475569" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
 <div class="group group-yellow">
   <div class="group-header">
-    <div class="group-indicator" style="background:#F59E0B;"></div>
+    <div class="group-indicator bg-yellow"></div>
     <div class="group-titles">
       <div class="group-label">Preprocessing</div>
       <div class="group-sublabel">Alignment & Feature Extraction</div>
@@ -400,7 +407,7 @@
   </div>
   <div class="group-nodes">
   <div class="node status-green" data-status="green">
-    <div class="node-accent" style="background:#10B981;"></div>
+    <div class="node-accent bg-green"></div>
     <div class="node-body">
       <div class="node-icon">🔧</div>
       <div class="node-content">
@@ -411,7 +418,7 @@
     </div>
   </div>
   <div class="node status-green" data-status="green">
-    <div class="node-accent" style="background:#10B981;"></div>
+    <div class="node-accent bg-green"></div>
     <div class="node-body">
       <div class="node-icon">📊</div>
       <div class="node-content">
@@ -422,7 +429,7 @@
     </div>
   </div>
   <div class="node status-yellow" data-status="yellow">
-    <div class="node-accent" style="background:#F59E0B;"></div>
+    <div class="node-accent bg-yellow"></div>
     <div class="node-body">
       <div class="node-icon">🏔️</div>
       <div class="node-content">
@@ -437,7 +444,7 @@
 <div class="connector"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 4v14M6 14l6 6 6-6" stroke="#475569" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
 <div class="group group-green">
   <div class="group-header">
-    <div class="group-indicator" style="background:#10B981;"></div>
+    <div class="group-indicator bg-green"></div>
     <div class="group-titles">
       <div class="group-label">Classification & Analysis</div>
       <div class="group-sublabel">Quantum-Hybrid Ensemble</div>
@@ -445,7 +452,7 @@
   </div>
   <div class="group-nodes">
   <div class="node status-green" data-status="green">
-    <div class="node-accent" style="background:#10B981;"></div>
+    <div class="node-accent bg-green"></div>
     <div class="node-body">
       <div class="node-icon">⚛️</div>
       <div class="node-content">
@@ -456,7 +463,7 @@
     </div>
   </div>
   <div class="node status-green" data-status="green">
-    <div class="node-accent" style="background:#10B981;"></div>
+    <div class="node-accent bg-green"></div>
     <div class="node-body">
       <div class="node-icon">🌊</div>
       <div class="node-content">
@@ -471,7 +478,7 @@
 <div class="connector"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 4v14M6 14l6 6 6-6" stroke="#475569" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
 <div class="group group-green">
   <div class="group-header">
-    <div class="group-indicator" style="background:#10B981;"></div>
+    <div class="group-indicator bg-green"></div>
     <div class="group-titles">
       <div class="group-label">Validation</div>
       <div class="group-sublabel">External Reference Data</div>
@@ -479,7 +486,7 @@
   </div>
   <div class="group-nodes">
   <div class="node status-green" data-status="green">
-    <div class="node-accent" style="background:#10B981;"></div>
+    <div class="node-accent bg-green"></div>
     <div class="node-body">
       <div class="node-icon">📈</div>
       <div class="node-content">
@@ -490,7 +497,7 @@
     </div>
   </div>
   <div class="node status-green" data-status="green">
-    <div class="node-accent" style="background:#10B981;"></div>
+    <div class="node-accent bg-green"></div>
     <div class="node-body">
       <div class="node-icon">🗺️</div>
       <div class="node-content">
@@ -505,7 +512,7 @@
 <div class="connector"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 4v14M6 14l6 6 6-6" stroke="#475569" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
 <div class="group group-green">
   <div class="group-header">
-    <div class="group-indicator" style="background:#10B981;"></div>
+    <div class="group-indicator bg-green"></div>
     <div class="group-titles">
       <div class="group-label">Output</div>
       <div class="group-sublabel">Maps & Reports</div>
@@ -513,7 +520,7 @@
   </div>
   <div class="group-nodes">
   <div class="node status-green" data-status="green">
-    <div class="node-accent" style="background:#10B981;"></div>
+    <div class="node-accent bg-green"></div>
     <div class="node-body">
       <div class="node-icon">🖼️</div>
       <div class="node-content">

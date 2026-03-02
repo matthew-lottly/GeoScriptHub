@@ -1,0 +1,194 @@
+"""flowchart.py — Pipeline architecture HTML/PNG diagram generator.
+
+Produces a self-contained HTML flowchart and optional PNG of the full
+Deep Fusion Landcover pipeline, following the GeoScriptHub convention
+established in quantum-flood-frequency.
+"""
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+
+logger = logging.getLogger("geoscripthub.deep_fusion_landcover.flowchart")
+
+# ── HTML template ─────────────────────────────────────────────────────────────
+
+_HTML_TEMPLATE = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Deep Fusion Landcover — Pipeline Architecture</title>
+  <style>
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{ font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0d1117; color: #e6edf3; }}
+    h1 {{ text-align: center; padding: 28px 0 8px;
+          font-size: 1.45rem; letter-spacing: .04em; color: #79c0ff; }}
+    p.subtitle {{ text-align: center; color: #8b949e; font-size: .88rem;
+                  padding-bottom: 24px; }}
+    .canvas {{ max-width: 1100px; margin: 0 auto; padding: 0 20px 60px; }}
+
+    /* ── Node styles ── */
+    .row  {{ display: flex; gap: 12px; justify-content: center;
+             align-items: stretch; margin-bottom: 0; }}
+    .arrow-row {{ display: flex; justify-content: center;
+                  gap: 12px; margin: 4px 0; }}
+    .arrow-col {{ display: flex; flex-direction: column;
+                  align-items: center; gap: 4px; }}
+
+    .node {{ border-radius: 8px; padding: 10px 14px; font-size: .82rem;
+             text-align: center; flex: 1; max-width: 200px; line-height: 1.35;
+             border: 1px solid transparent; cursor: default;
+             transition: transform .15s; }}
+    .node:hover {{ transform: scale(1.04); }}
+
+    .src  {{ background: #1f3a5f; border-color: #388bfd; color: #a5c8ff; }}
+    .proc {{ background: #1b3a2a; border-color: #3fb950; color: #7ee787; }}
+    .ml   {{ background: #3d1a3d; border-color: #bc8cff; color: #d2a8ff; }}
+    .out  {{ background: #3a2500; border-color: #e3b341; color: #f0c060; }}
+    .meta {{ background: #2a1a3e; border-color: #bc8cff; font-weight: 600;
+             color: #ffa657; }}
+
+    .arrow {{ font-size: 1.3rem; color: #484f58; line-height: 1; }}
+    .h-arrow {{ font-size: 1.1rem; color: #484f58; align-self: center; }}
+
+    .section-label {{ text-align: center; font-size: .72rem; color: #8b949e;
+                      text-transform: uppercase; letter-spacing: .1em;
+                      margin: 18px 0 6px; }}
+    .divider {{ border: none; border-top: 1px solid #21262d; margin: 4px 0 10px; }}
+  </style>
+</head>
+<body>
+  <h1>Deep Fusion Landcover — Pipeline Architecture</h1>
+  <p class="subtitle">
+    Annual 12-class landcover maps · Austin TX metro · 1990–2025
+    · 5-branch stacked ensemble CNN + Quantum + OBIA
+  </p>
+  <div class="canvas">
+
+    <!-- ── Data Sources ── -->
+    <p class="section-label">① Data Sources</p>
+    <div class="row">
+      <div class="node src">Landsat 4/5/7/8/9<br/><small>1990–2025 Planetary Computer</small></div>
+      <div class="node src">Sentinel-1 SAR<br/><small>C-band RTC 2014–2025</small></div>
+      <div class="node src">Sentinel-2 L2A<br/><small>10 m optical 2017–2025</small></div>
+      <div class="node src">NAIP 1 m<br/><small>RGB+NIR present-day</small></div>
+      <div class="node src">USGS 3DEP LiDAR<br/><small>WCS DSM/DTM</small></div>
+    </div>
+
+    <div class="arrow-row">{arrows_down_5}</div>
+
+    <!-- ── Preprocessing ── -->
+    <p class="section-label">② Preprocessing &amp; Compositing</p>
+    <div class="row">
+      <div class="node proc">Cloud Masking<br/>(QA_PIXEL · SCL)</div>
+      <div class="node proc">OLI→TM Harmonisation<br/>(Roy 2016)</div>
+      <div class="node proc">Medoid Composite<br/>(annual cloud-free)</div>
+      <div class="node proc">SLC-off Gap Fill<br/>(LE07 2003–2012)</div>
+      <div class="node proc">STARFM Fusion<br/>(Landsat+S2 10 m)</div>
+    </div>
+
+    <div class="arrow-row">{arrows_down_5}</div>
+
+    <!-- ── Feature Engineering ── -->
+    <p class="section-label">③ Feature Engineering (150 dimensions)</p>
+    <div class="row">
+      <div class="node proc">Spectral Indices<br/>(NDVI/EVI/NDWI/NDBI…)</div>
+      <div class="node proc">SAR Backscatter<br/>+ Polarimetric Ratios</div>
+      <div class="node proc">Phenology<br/>(7 NDVI temporal stats)</div>
+      <div class="node proc">LiDAR Products<br/>(nDSM · Slope · HAND)</div>
+      <div class="node proc">GLCM Texture<br/>(21 features)</div>
+    </div>
+
+    <div class="arrow-row">{arrows_down_5}</div>
+
+    <!-- ── 5-Branch Ensemble ── -->
+    <p class="section-label">④ 5-Branch Stacked Ensemble</p>
+    <div class="row">
+      <div class="node ml">Branch 1<br/>Random Forest<br/><small>500 trees</small></div>
+      <div class="node ml">Branch 2<br/>Gradient Boosting<br/><small>PCA-50 features</small></div>
+      <div class="node ml">Branch 3<br/>Quantum VQC<br/><small>8-qubit VQC</small></div>
+      <div class="node ml">Branch 4<br/>TorchGeo CNN<br/><small>ResNet-50 ONNX</small></div>
+      <div class="node ml">Branch 5<br/>SAM2 OBIA<br/><small>segment-level RF</small></div>
+    </div>
+
+    <div class="arrow-row">{arrows_down_5}</div>
+
+    <!-- ── Meta-learner ── -->
+    <p class="section-label">⑤ Meta-Learner</p>
+    <div class="row">
+      <div class="node meta" style="max-width:460px;">
+        LightGBM Meta-Stacker<br/>
+        <small>OOF stacked class probabilities (5 × 12 = 60 features → 12 classes)</small>
+      </div>
+    </div>
+
+    <div class="arrow-row"><span class="arrow">▼</span></div>
+
+    <!-- ── Sub-canopy detection ── -->
+    <p class="section-label">⑥ Sub-canopy Structure Detection</p>
+    <div class="row">
+      <div class="node proc">LiDAR Penetration<br/>(nDSM &gt; 5 m)</div>
+      <div class="node proc">SAR Double-Bounce<br/>(VV &gt; −8 dB)</div>
+      <div class="node proc">Thermal Anomaly<br/>(z-score &gt; 1.5)</div>
+      <div class="node proc">HAND Flood Proxy<br/>(&lt; 2 m elev above drain)</div>
+    </div>
+
+    <div class="arrow-row"><span class="arrow">▼</span></div>
+
+    <!-- ── Outputs ── -->
+    <p class="section-label">⑦ Outputs</p>
+    <div class="row">
+      <div class="node out">35 Annual COG Maps<br/>(10 m · 12 classes)</div>
+      <div class="node out">NAIP Present-Day<br/>1 m Classification</div>
+      <div class="node out">Transition Matrices<br/>+ Intensity Analysis</div>
+      <div class="node out">Sub-canopy GeoJSON<br/>(buildings/floods)</div>
+      <div class="node out">Interactive Map<br/>+ Sankey Diagrams</div>
+    </div>
+
+    <div class="arrow-row">{arrows_down_5}</div>
+
+    <!-- ── Accuracy ── -->
+    <p class="section-label">⑧ Accuracy Assessment</p>
+    <div class="row">
+      <div class="node out" style="max-width:560px;">
+        NLCD Cross-Validation (2001 · 2006 · 2011 · 2016 · 2021)
+        — Overall Accuracy · Cohen's Kappa · Per-class F1
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
+"""
+
+_ARROWS_5 = '<span class="arrow">▼</span>' * 5
+
+
+def generate_flowchart(output_dir: Path, html: bool = True) -> Path:
+    """Write the pipeline architecture HTML to *output_dir*.
+
+    Parameters
+    ----------
+    output_dir: Directory to write the HTML file.
+    html:       Always True; kept for API symmetry.
+
+    Returns
+    -------
+    Path to the written HTML file.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    out_path = output_dir / "pipeline_architecture.html"
+
+    rendered = _HTML_TEMPLATE.format(
+        arrows_down_5="".join(
+            f'<div class="arrow-col"><span class="arrow">▼</span></div>'
+            for _ in range(5)
+        )
+    )
+
+    out_path.write_text(rendered, encoding="utf-8")
+    logger.info("Pipeline architecture diagram saved → %s", out_path)
+    return out_path
