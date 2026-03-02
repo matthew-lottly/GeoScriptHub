@@ -82,12 +82,48 @@ N_QUBITS = 3                        # 3-qubit system → 8 basis states
 HILBERT_DIM = 2 ** N_QUBITS         # = 8
 ENTANGLEMENT_STRENGTH = np.pi / 4   # CZ rotation strength
 
-# Spectral attention defaults (per sensor)
+# Spectral attention defaults (per sensor) — BASE weights
+# These are modulated by seasonal factors below.
 ATTENTION_WEIGHTS = {
     "landsat":   {"ndwi": 0.30, "mndwi": 0.35, "awei": 0.35},
     "sentinel2": {"ndwi": 0.35, "mndwi": 0.30, "awei": 0.35},
     "naip":      {"ndwi": 0.70, "mndwi": 0.15, "awei": 0.15},
 }
+
+# Seasonal modulation factors — multiply base attention weights by these.
+# Month → {index: factor}.  Values > 1.0 boost, < 1.0 suppress.
+#
+# Rationale:
+#   Summer (Jun-Sep): Heavy vegetation makes NDWI unreliable (green veg
+#     absorbs NIR similarly to water) → boost MNDWI/AWEI which use SWIR.
+#   Winter (Dec-Feb): Dormant veg / bare soil can mimic shallow water
+#     in NDWI → boost AWEI (most robust to soil confusion).
+#   Spring/Fall: Transitional — moderate weighting.
+SEASONAL_MODULATION: dict[int, dict[str, float]] = {
+    # month: {index: multiplier}
+    1:  {"ndwi": 0.7, "mndwi": 1.2, "awei": 1.3},  # Jan — winter
+    2:  {"ndwi": 0.7, "mndwi": 1.2, "awei": 1.3},  # Feb
+    3:  {"ndwi": 0.9, "mndwi": 1.1, "awei": 1.1},  # Mar — spring
+    4:  {"ndwi": 0.9, "mndwi": 1.1, "awei": 1.1},  # Apr
+    5:  {"ndwi": 0.9, "mndwi": 1.1, "awei": 1.1},  # May
+    6:  {"ndwi": 0.6, "mndwi": 1.3, "awei": 1.4},  # Jun — summer
+    7:  {"ndwi": 0.5, "mndwi": 1.4, "awei": 1.5},  # Jul — peak veg
+    8:  {"ndwi": 0.5, "mndwi": 1.4, "awei": 1.5},  # Aug
+    9:  {"ndwi": 0.6, "mndwi": 1.3, "awei": 1.4},  # Sep
+    10: {"ndwi": 0.8, "mndwi": 1.1, "awei": 1.2},  # Oct — fall
+    11: {"ndwi": 0.8, "mndwi": 1.1, "awei": 1.2},  # Nov
+    12: {"ndwi": 0.7, "mndwi": 1.2, "awei": 1.3},  # Dec — winter
+}
+
+# Combined urban exclusion thresholds (v4.0 improvement)
+# Pixels meeting ALL of these are hard-masked as urban BEFORE classification.
+# This prevents buildings from ever entering the water probability pipeline.
+URBAN_HARD_NDBI_THRESH = 0.10    # NDBI > 0.10 → strong built-up signal
+URBAN_HARD_WRI_THRESH  = 0.60    # WRI < 0.60 → definitely not water (water > 1.0)
+URBAN_HARD_NDVI_THRESH = 0.20    # NDVI < 0.20 → not vegetation (impervious)
+# Soft urban suppression for moderate NDBI (kept from v3.0 but weakened)
+URBAN_SOFT_NDBI_THRESH = 0.0     # NDBI > 0.0 → possible urban
+URBAN_SOFT_SUPPRESS     = 0.30   # multiply water_prob by this (was 0.15)
 
 # Monte Carlo uncertainty params
 MC_DROPOUT_SAMPLES = 8
@@ -242,13 +278,17 @@ MORPH_STRUCT_SMALL = np.array([
 # At 10 m resolution, 100 px ≈ 10,000 m² — a larger water body
 MIN_WATER_CLUSTER_PX = 50
 
-# Urban suppression constants
-NDBI_URBAN_THRESHOLD = 0.0   # NDBI > 0 → built-up area
-URBAN_SUPPRESSION_FACTOR = 0.15  # multiply water_prob by this in urban areas
+# Urban suppression constants (v4.0: soft suppression only — hard mask done earlier)
+NDBI_URBAN_THRESHOLD = URBAN_SOFT_NDBI_THRESH
+URBAN_SUPPRESSION_FACTOR = URBAN_SOFT_SUPPRESS
 
 # SAR confidence boost/suppress
 SAR_WATER_BOOST = 1.4         # boost water prob where SAR confirms water
 SAR_BUILDING_SUPPRESS = 0.10  # suppress water prob where SAR detects building
+
+# Permanent water stream detection threshold (v4.0)
+# Pixels with NDWI above this for multiple sensors are likely permanent water.
+STREAM_NDWI_CONSENSUS = 0.15  # stricter than general NDWI_WATER_THRESHOLD
 
 
 def morphological_refinement(
@@ -314,12 +354,32 @@ class SpectralAttention:
     - Landsat/S2 with SWIR → MNDWI and AWEI are most discriminative
     - NAIP without SWIR → NDWI must carry most of the signal
 
+    v4.0: Season-aware modulation. Summer vegetation confuses NDWI,
+    so MNDWI/AWEI are boosted in summer months. Winter bare soil
+    confuses NDWI, so AWEI is boosted in winter.
+
     The attention mechanism softmax-normalises per-sensor weights
-    and applies them to bias the quantum encoding angles.
+    (modulated by season) and applies them to bias the quantum
+    encoding angles.
     """
 
-    def __init__(self, sensor: str = "landsat") -> None:
+    def __init__(self, sensor: str = "landsat", month: int = 0) -> None:
         weights = ATTENTION_WEIGHTS.get(sensor, ATTENTION_WEIGHTS["landsat"])
+
+        # Apply seasonal modulation if month is provided (1–12)
+        if 1 <= month <= 12:
+            mod = SEASONAL_MODULATION[month]
+            weights = {
+                k: weights[k] * mod.get(k, 1.0)
+                for k in weights
+            }
+            logger.debug(
+                "Seasonal attention (month=%d, sensor=%s): "
+                "ndwi=%.3f mndwi=%.3f awei=%.3f",
+                month, sensor,
+                weights["ndwi"], weights["mndwi"], weights["awei"],
+            )
+
         self.raw_weights = weights
         # Softmax normalisation
         vals = np.array([weights["ndwi"], weights["mndwi"], weights["awei"]])
@@ -376,9 +436,10 @@ class QuantumFeatureEncoder:
         self,
         entangle_strength: float = ENTANGLEMENT_STRENGTH,
         sensor: str = "landsat",
+        month: int = 0,
     ) -> None:
         self.entangle_strength = entangle_strength
-        self.attention = SpectralAttention(sensor)
+        self.attention = SpectralAttention(sensor, month=month)
 
         # Build the full 8×8 entangling unitary
         self._circuit_unitary = self._build_vqc_unitary(entangle_strength)
@@ -411,9 +472,13 @@ class QuantumFeatureEncoder:
 
         # CZ gates on 3-qubit system
         # CZ₁₂ = CZ on qubits 0,1 ⊗ I₃
+        # Phase −1 on states where qubit 0 AND qubit 1 are both |1⟩:
+        #   |110⟩ = index 6, |111⟩ = index 7
         cz12 = np.eye(8, dtype=complex)
-        cz12[3, 3] = -1  # |011⟩
-        cz12[7, 7] = -1  # |111⟩
+        for i in range(8):
+            bits = [(i >> 2) & 1, (i >> 1) & 1, i & 1]
+            if bits[0] == 1 and bits[1] == 1:
+                cz12[i, i] = -1
 
         # CZ₂₃ = I₁ ⊗ CZ on qubits 1,2
         cz23 = np.eye(8, dtype=complex)
@@ -595,6 +660,7 @@ class QuantumKernelSVM:
         self.scaler = StandardScaler()
         self._svm: Optional[SVC] = None
         self._fitted = False
+        self._X_train_ref: Optional[np.ndarray] = None  # stored for kernel prediction
         self._encoder = QuantumFeatureEncoder()
 
     def _quantum_feature_map(self, X: np.ndarray) -> np.ndarray:
@@ -653,6 +719,10 @@ class QuantumKernelSVM:
     ) -> np.ndarray:
         """Train on pseudo-labels from NDWI thresholds, then predict.
 
+        If the model is already fitted (from a previous observation),
+        skips training and runs prediction only.  This avoids O(n²)
+        re-training across many observations.
+
         Args:
             features: Feature matrix (n_pixels, n_features).
             ndwi: NDWI array OR pre-computed pseudo-labels (int).
@@ -668,34 +738,42 @@ class QuantumKernelSVM:
         else:
             labels = (ndwi > NDWI_WATER_THRESHOLD).astype(int)
 
-        rng = np.random.default_rng(42)
-        idx = rng.choice(n_pixels, size=min(self.n_samples, n_pixels), replace=False)
-        X_train = features[idx]
-        y_train = labels[idx]
+        # --- Fit ONCE, skip on subsequent calls ---
+        if not self._fitted:
+            rng = np.random.default_rng(42)
+            idx = rng.choice(n_pixels, size=min(self.n_samples, n_pixels), replace=False)
+            X_train = features[idx]
+            y_train = labels[idx]
 
-        if len(np.unique(y_train)) < 2:
-            logger.warning("QK-SVM: only one class in training set, falling back to NDWI")
-            return (ndwi > NDWI_WATER_THRESHOLD).astype("float32")
+            if len(np.unique(y_train)) < 2:
+                logger.warning("QK-SVM: only one class in training set, falling back to NDWI")
+                return labels.astype("float32")
 
-        X_scaled = self.scaler.fit_transform(X_train) * np.pi
+            X_scaled = self.scaler.fit_transform(X_train) * np.pi
+            self._X_train_ref = X_scaled  # Store for kernel computation
 
-        logger.debug("Computing quantum kernel (%d × %d) …", len(idx), len(idx))
-        K_train = self._quantum_kernel(X_scaled, X_scaled)
+            logger.debug("Computing quantum kernel (%d × %d) …", len(idx), len(idx))
+            K_train = self._quantum_kernel(X_scaled, X_scaled)
 
-        self._svm = SVC(C=self.C, kernel="precomputed", probability=True, random_state=42)
-        self._svm.fit(K_train, y_train)
-        self._fitted = True
+            self._svm = SVC(C=self.C, kernel="precomputed", probability=True, random_state=42)
+            self._svm.fit(K_train, y_train)
+            self._fitted = True
+            logger.info("QK-SVM trained on %d samples (first observation)", len(idx))
 
+        # --- Predict (batched) ---
         probs = np.zeros(n_pixels, dtype="float32")
         batch_size = 2000
-        X_train_ref = X_scaled
+        assert self._X_train_ref is not None, "QK-SVM not fitted"
+        assert self._svm is not None, "QK-SVM not fitted"
+        X_train_ref = self._X_train_ref
+        svm = self._svm
 
         for start in range(0, n_pixels, batch_size):
             end = min(start + batch_size, n_pixels)
             X_batch = self.scaler.transform(features[start:end]) * np.pi
             K_batch = self._quantum_kernel(X_batch, X_train_ref)
-            p = self._svm.predict_proba(K_batch)
-            water_col = np.where(self._svm.classes_ == 1)[0]
+            p = svm.predict_proba(K_batch)
+            water_col = np.where(svm.classes_ == 1)[0]
             if len(water_col) > 0:
                 probs[start:end] = p[:, water_col[0]]
             else:
@@ -740,6 +818,10 @@ class SpectralGBClassifier:
     ) -> np.ndarray:
         """Train on pseudo-labels and predict water probability.
 
+        If the model is already fitted (from a previous observation),
+        skips training and runs prediction only.  This avoids O(n²)
+        re-training across many observations.
+
         Args:
             features: Feature matrix (n_pixels, n_features).
             ndwi: NDWI array OR pre-computed pseudo-labels (int).
@@ -752,19 +834,23 @@ class SpectralGBClassifier:
         else:
             labels = (ndwi > NDWI_WATER_THRESHOLD).astype(int)
 
-        rng = np.random.default_rng(123)
-        idx = rng.choice(n_pixels, size=min(self.n_samples, n_pixels), replace=False)
+        # --- Fit ONCE, skip on subsequent calls ---
+        if not self._fitted:
+            rng = np.random.default_rng(123)
+            idx = rng.choice(n_pixels, size=min(self.n_samples, n_pixels), replace=False)
 
-        X_train = self.scaler.fit_transform(features[idx])
-        y_train = labels[idx]
+            X_train = self.scaler.fit_transform(features[idx])
+            y_train = labels[idx]
 
-        if len(np.unique(y_train)) < 2:
-            logger.warning("GB: only one class in training set, falling back to pseudo-labels")
-            return labels.astype("float32")
+            if len(np.unique(y_train)) < 2:
+                logger.warning("GB: only one class in training set, falling back to pseudo-labels")
+                return labels.astype("float32")
 
-        self._gb.fit(X_train, y_train)
-        self._fitted = True
+            self._gb.fit(X_train, y_train)
+            self._fitted = True
+            logger.info("GB trained on %d samples (first observation)", len(idx))
 
+        # --- Predict (batched) ---
         probs = np.zeros(n_pixels, dtype="float32")
         batch_size = 10000
 
@@ -911,22 +997,25 @@ def bayesian_model_average(
 
 
 # ---------------------------------------------------------------------------
-# Main classifier orchestrator — v2.0
+# Main classifier orchestrator — v4.0
 # ---------------------------------------------------------------------------
 
 class QuantumHybridClassifier:
-    """Orchestrates the full QIEC v3.0 pipeline for water classification.
+    """Orchestrates the full QIEC v4.0 pipeline for water classification.
 
     Runs QFE (3-qubit) → QK-SVM → GBSIE → Meta-Learner fusion
     → SAR/terrain/morphological refinement for each observation.
 
-    v3.0 enhancements over v2.0:
+    v4.0 enhancements:
+    - 30 m aggregate resolution (Landsat native, no interpolation)
     - SAR (Sentinel-1) features: VV/VH backscatter, SAR water index
     - DEM/terrain constraints: HAND, slope, flood susceptibility
     - NDBI urban mask to suppress building false positives
     - Morphological refinement to remove isolated false-positive clusters
     - WRI (Water Ratio Index) for additional spectral discrimination
     - Multi-source pseudo-labels (SAR + spectral + terrain consensus)
+    - Train-once classifiers (QK-SVM, GB fitted on first obs, predict-only after)
+    - Corrected CZ₁₂ quantum gate (phases |110⟩ and |111⟩)
 
     Parameters
     ----------
@@ -968,11 +1057,12 @@ class QuantumHybridClassifier:
         self._sar_features: Optional[SARFeatures] = None
         self._terrain_features: Optional[TerrainFeatures] = None
 
-    def _get_qfe(self, sensor: str) -> QuantumFeatureEncoder:
-        """Get or create a sensor-specific QFE (with attention weights)."""
-        if sensor not in self._qfe_cache:
-            self._qfe_cache[sensor] = QuantumFeatureEncoder(sensor=sensor)
-        return self._qfe_cache[sensor]
+    def _get_qfe(self, sensor: str, month: int = 0) -> QuantumFeatureEncoder:
+        """Get or create a sensor+month-specific QFE (with seasonal attention)."""
+        key = f"{sensor}_{month}"
+        if key not in self._qfe_cache:
+            self._qfe_cache[key] = QuantumFeatureEncoder(sensor=sensor, month=month)
+        return self._qfe_cache[key]
 
     def classify_stack(
         self,
@@ -1053,6 +1143,13 @@ class QuantumHybridClassifier:
         shape = green.shape
         has_swir = not np.all(np.isnan(swir1))
 
+        # Extract month from date for seasonal weighting
+        obs_month = 0
+        try:
+            obs_month = int(obs["date"].split("-")[1])
+        except (IndexError, ValueError):
+            pass
+
         # --- Step 1: Compute spectral indices ---
         ndwi = compute_ndwi(green, nir)
 
@@ -1071,8 +1168,42 @@ class QuantumHybridClassifier:
             ndbi = np.zeros_like(ndwi)
             wri = np.zeros_like(ndwi)
 
-        # --- Step 2: Quantum-Inspired Feature Encoding (3-qubit) ---
-        qfe = self._get_qfe(source)
+        # --- Step 1b: Hard urban exclusion mask (v4.0) ---
+        # Pixels that are DEFINITELY buildings/impervious are masked out
+        # BEFORE any classification occurs. This prevents them from ever
+        # being assigned water probability.
+        urban_hard_mask = np.zeros(shape, dtype=bool)
+        if has_swir:
+            urban_hard_mask = (
+                (ndbi > URBAN_HARD_NDBI_THRESH)
+                & (wri < URBAN_HARD_WRI_THRESH)
+                & (ndvi < URBAN_HARD_NDVI_THRESH)
+            )
+            n_urban_hard = int(urban_hard_mask.sum())
+            if n_urban_hard > 0:
+                logger.info(
+                    "Hard urban mask: %d px excluded (%.1f%% of grid) — "
+                    "NDBI>%.2f & WRI<%.2f & NDVI<%.2f",
+                    n_urban_hard,
+                    100.0 * n_urban_hard / urban_hard_mask.size,
+                    URBAN_HARD_NDBI_THRESH,
+                    URBAN_HARD_WRI_THRESH,
+                    URBAN_HARD_NDVI_THRESH,
+                )
+
+        # If SAR detects buildings, add those to the hard mask too
+        sar = self._sar_features
+        if sar is not None and sar.valid_mask.any():
+            sar_building = sar.building_mask_sar
+            combined_urban = urban_hard_mask | sar_building
+            logger.info(
+                "Combined urban mask (spectral+SAR): %d px → %d px",
+                int(urban_hard_mask.sum()), int(combined_urban.sum()),
+            )
+            urban_hard_mask = combined_urban
+
+        # --- Step 2: Quantum-Inspired Feature Encoding (3-qubit, seasonal) ---
+        qfe = self._get_qfe(source, month=obs_month)
 
         if self.use_uncertainty:
             q_prob, q_conf, uncertainty, entropy = qfe.encode_with_uncertainty(
@@ -1083,10 +1214,19 @@ class QuantumHybridClassifier:
             uncertainty = np.zeros(shape, dtype="float32")
             entropy = np.zeros(shape, dtype="float32")
 
-        # --- Step 3: Build enhanced feature matrix (v3.0) ---
-        feature_bands: list[np.ndarray] = [green, nir, red, ndwi, mndwi, ndvi]
-        if has_swir:
-            feature_bands.extend([swir1, swir2, awei_sh, bsi, ndbi, wri])
+        # --- Step 3: Build enhanced feature matrix (v4.0) ---
+        # ALWAYS build a fixed-size feature vector (even without SWIR)
+        # so train-once classifiers see consistent feature dimensions.
+        zeros = np.zeros(shape, dtype="float32")
+        feature_bands: list[np.ndarray] = [
+            green, nir, red, ndwi, mndwi, ndvi,
+            swir1 if has_swir else zeros,   # swir1
+            swir2 if has_swir else zeros,   # swir2
+            awei_sh if has_swir else zeros, # awei_sh
+            bsi if has_swir else zeros,     # bsi
+            ndbi if has_swir else zeros,    # ndbi
+            wri if has_swir else zeros,     # wri
+        ]
 
         # v3.0: Append SAR features if available
         sar = self._sar_features
@@ -1168,32 +1308,37 @@ class QuantumHybridClassifier:
                 prior_gb=priors[2],
             )
 
-        # --- Step 8: Post-classification refinement (v3.0) ---
+        # --- Step 8: Post-classification refinement (v4.0) ---
 
-        # 8a. Urban suppression via NDBI
+        # 8a. Apply hard urban exclusion — force probability to 0
+        fused_prob = np.where(urban_hard_mask, 0.0, fused_prob)
+
+        # 8b. Soft urban suppression via NDBI (for moderate urban signals)
         if has_swir:
-            urban_mask = ndbi > NDBI_URBAN_THRESHOLD
+            soft_urban = (ndbi > NDBI_URBAN_THRESHOLD) & ~urban_hard_mask
             fused_prob = np.where(
-                urban_mask,
+                soft_urban,
                 fused_prob * URBAN_SUPPRESSION_FACTOR,
                 fused_prob,
             )
             logger.debug(
-                "Urban suppression: %d px suppressed (NDBI > %.1f)",
-                int(urban_mask.sum()), NDBI_URBAN_THRESHOLD,
+                "Urban suppression: %d px hard-masked, %d px soft-suppressed",
+                int(urban_hard_mask.sum()), int(soft_urban.sum()),
             )
 
-        # 8b. SAR building suppression + water confirmation
+        # 8c. SAR building suppression + water confirmation
+        sar = self._sar_features
         if sar is not None and sar.valid_mask.any():
             # Suppress water where SAR detects buildings (high VV backscatter)
+            # (additional to hard mask — catches borderline cases)
             fused_prob = np.where(
-                sar.building_mask_sar,
+                sar.building_mask_sar & ~urban_hard_mask,
                 fused_prob * SAR_BUILDING_SUPPRESS,
                 fused_prob,
             )
             # Boost water where SAR confirms (low VV backscatter)
             fused_prob = np.where(
-                sar.water_mask_sar & (fused_prob > 0.2),
+                sar.water_mask_sar & (fused_prob > 0.2) & ~urban_hard_mask,
                 np.minimum(fused_prob * SAR_WATER_BOOST, 1.0),
                 fused_prob,
             )
@@ -1203,7 +1348,8 @@ class QuantumHybridClassifier:
                 int((sar.water_mask_sar & (fused_prob > 0.2)).sum()),
             )
 
-        # 8c. Terrain constraint via HAND
+        # 8d. Terrain constraint via HAND
+        terrain = self._terrain_features
         if terrain is not None and terrain.valid_mask.any():
             # Scale probability by flood susceptibility (sigmoid of HAND)
             fused_prob = fused_prob * terrain.flood_susceptibility
@@ -1214,7 +1360,7 @@ class QuantumHybridClassifier:
                 int((~terrain.terrain_mask).sum()),
             )
 
-        # 8d. Morphological refinement — remove building-sized clusters
+        # 8e. Morphological refinement — remove building-sized clusters
         # Only apply on grids large enough where building confusion is real,
         # and only when SAR or terrain data provides context for discrimination.
         # Without SAR/terrain, morphological filtering can hurt accuracy by

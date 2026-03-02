@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantum Land-Cover Change Detector — Pipeline Architecture</title>
+<style>
+  :root {
+    --bg: #0f172a; --card: #1e293b; --border: #334155;
+    --text: #e2e8f0; --dim: #94a3b8; --accent: #38bdf8;
+    --green: #22c55e; --amber: #f59e0b; --red: #ef4444;
+    --purple: #a78bfa; --pink: #f472b6; --cyan: #22d3ee;
+    --teal: #14b8a6; --orange: #fb923c;
+    --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:var(--font); padding:24px; min-height:100vh; }
+
+  /* ── Header ── */
+  .header { text-align:center; margin-bottom:32px; }
+  .header h1 { font-size:28px; font-weight:700; background:linear-gradient(135deg,var(--accent),var(--purple));
+               -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:6px; }
+  .header p { color:var(--dim); font-size:14px; }
+
+  /* ── Legend ── */
+  .legend { display:flex; gap:20px; justify-content:center; flex-wrap:wrap; margin-bottom:28px; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--dim); }
+  .legend-dot { width:12px; height:12px; border-radius:3px; }
+
+  /* ── Flow container ── */
+  .flow { display:flex; flex-direction:column; gap:0; align-items:center; max-width:1400px; margin:0 auto; }
+
+  /* ── Section ── */
+  .section { width:100%; background:var(--card); border:1px solid var(--border); border-radius:12px;
+             padding:20px; margin-bottom:0; position:relative; }
+  .section-label { position:absolute; top:-12px; left:24px; background:var(--bg); padding:2px 12px;
+                   font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1.5px;
+                   border-radius:4px; border:1px solid var(--border); }
+
+  /* ── Node grid ── */
+  .node-row { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; padding:8px 0; }
+  .node { flex:1; min-width:140px; max-width:220px; padding:12px 14px; border-radius:8px;
+          text-align:center; font-size:12px; font-weight:500; position:relative;
+          transition:transform .15s, box-shadow .15s; cursor:default; }
+  .node:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.35); }
+  .node .label { font-weight:600; font-size:13px; margin-bottom:4px; }
+  .node .detail { font-size:10.5px; opacity:.8; line-height:1.4; }
+  .node .badge { position:absolute; top:-6px; right:-6px; font-size:9px; font-weight:700;
+                 padding:2px 6px; border-radius:8px; background:var(--bg); border:1px solid var(--border); }
+
+  /* ── Node colours ── */
+  .n-data     { background:linear-gradient(135deg,#0f4c75,#1b6fa8); border:1px solid #2980b9; }
+  .n-process  { background:linear-gradient(135deg,#1a3a2a,#27654b); border:1px solid #2ecc71; }
+  .n-quantum  { background:linear-gradient(135deg,#3b1f6e,#5b3a9e); border:1px solid #8e44ad; }
+  .n-ai       { background:linear-gradient(135deg,#6b2b3a,#a0425c); border:1px solid #e74c6c; }
+  .n-output   { background:linear-gradient(135deg,#5a3e1b,#8a6130); border:1px solid #f39c12; }
+  .n-validate { background:linear-gradient(135deg,#1a4a4a,#2a7a7a); border:1px solid var(--teal); }
+  .n-static   { background:linear-gradient(135deg,#2d3748,#4a5568); border:1px solid #718096; }
+
+  /* ── Connector arrows ── */
+  .connector { display:flex; justify-content:center; align-items:center; height:36px; position:relative; }
+  .connector svg { overflow:visible; }
+  .arrow-line { stroke:var(--accent); stroke-width:2; stroke-dasharray:6 3; opacity:.6; }
+  .arrow-head { fill:var(--accent); opacity:.8; }
+  .connector-label { position:absolute; background:var(--bg); padding:1px 8px; border-radius:4px;
+                     font-size:10px; color:var(--dim); border:1px solid var(--border); }
+
+  /* ── Sub-section headers ── */
+  .sub-header { text-align:center; font-size:12px; font-weight:600; color:var(--accent);
+                margin:10px 0 6px; letter-spacing:.5px; }
+  .sub-divider { border:none; border-top:1px dashed var(--border); margin:10px 0; }
+
+  /* ── Feedback loops ── */
+  .feedback { display:flex; justify-content:center; margin:4px 0; }
+  .feedback-tag { font-size:10px; color:var(--pink); background:rgba(244,114,182,.08);
+                  border:1px solid rgba(244,114,182,.25); border-radius:12px; padding:3px 12px; }
+
+  /* ── Detailed connection table ── */
+  .connection-table { width:100%; border-collapse:collapse; margin:16px 0; font-size:11px; }
+  .connection-table th { background:var(--card); color:var(--accent); padding:8px 12px; text-align:left;
+                          border-bottom:2px solid var(--border); font-weight:600; }
+  .connection-table td { padding:6px 12px; border-bottom:1px solid rgba(51,65,85,.5); color:var(--dim); }
+  .connection-table tr:hover td { background:rgba(56,189,248,.04); }
+
+  /* ── Stats footer ── */
+  .stats-row { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-top:24px; }
+  .stat-card { background:var(--card); border:1px solid var(--border); border-radius:8px;
+               padding:12px 20px; text-align:center; min-width:120px; }
+  .stat-card .val { font-size:20px; font-weight:700; color:var(--accent); }
+  .stat-card .lbl { font-size:10px; color:var(--dim); margin-top:2px; }
+
+  /* ── Print / PDF styles ── */
+  @media print {
+    body { background:#fff; color:#1a202c; padding:12px; }
+    .section { border-color:#d1d5db; background:#f9fafb; }
+    .header h1 { -webkit-text-fill-color:#1e40af; }
+    .node { color:#1a202c; }
+    .n-data { background:#dbeafe; border-color:#3b82f6; }
+    .n-process { background:#dcfce7; border-color:#22c55e; }
+    .n-quantum { background:#ede9fe; border-color:#8b5cf6; }
+    .n-ai { background:#fce7f3; border-color:#ec4899; }
+    .n-output { background:#fef3c7; border-color:#f59e0b; }
+    .n-validate { background:#ccfbf1; border-color:#14b8a6; }
+    .n-static { background:#f1f5f9; border-color:#94a3b8; }
+    .connector-label, .section-label { background:#fff; }
+    .arrow-line { stroke:#3b82f6; }
+    .arrow-head { fill:#3b82f6; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<div class="header">
+  <h1>Quantum Land-Cover Change Detector v1.0</h1>
+  <p>Multi-Sensor Fusion &bull; Pseudo-Quantum Classification &bull; 1990 – Present &bull; Houston TX</p>
+  <p style="margin-top:4px;font-size:12px;">San Jacinto River Corridor &bull; 29.757°N 95.085°W &bull; 30 m aggregate resolution</p>
+</div>
+
+<!-- ═══════════════ LEGEND ═══════════════ -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#2980b9"></div>Data Source</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div>Processing</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#8e44ad"></div>Quantum Method</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#e74c6c"></div>AI / ML</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f39c12"></div>Output</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--teal)"></div>Validation</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#718096"></div>Static / Ancillary</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--pink)"></div>Feedback Loop</div>
+</div>
+
+<div class="flow">
+
+<!-- ═══════════════ STEP 1: AOI ═══════════════ -->
+<div class="section">
+  <span class="section-label" style="color:var(--accent)">Step 1 — Area of Interest</span>
+  <div class="node-row" style="margin-top:8px;">
+    <div class="node n-data">
+      <div class="label">Centre Coordinate</div>
+      <div class="detail">29.757°N, 95.085°W<br>San Jacinto River, East Houston</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">AOI Builder</div>
+      <div class="detail">Buffer (km) → WGS-84 bbox<br>→ Project to UTM 15N (EPSG:32615)</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Epoch Definition</div>
+      <div class="detail">1990–1999 · 2000–2009<br>2010–2019 · 2020–2026<br>+ yearly composites</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Connector ── -->
+<div class="connector">
+  <svg width="2" height="36"><line x1="1" y1="0" x2="1" y2="28" class="arrow-line"/>
+  <polygon points="-4,28 6,28 1,36" class="arrow-head"/></svg>
+  <span class="connector-label">AOI bbox + epoch ranges</span>
+</div>
+
+<!-- ═══════════════ STEP 2: DATA ACQUISITION ═══════════════ -->
+<div class="section">
+  <span class="section-label" style="color:#2980b9">Step 2 — Multi-Sensor Data Acquisition</span>
+
+  <div class="sub-header">Optical Sensors (cloud ≤ 15%)</div>
+  <div class="node-row">
+    <div class="node n-data">
+      <div class="badge">1984–2012</div>
+      <div class="label">Landsat 5 TM</div>
+      <div class="detail">Collection 2 Level-2 SR<br>30 m · 6 spectral bands + QA<br>STAC: landsat-c2-l2</div>
+    </div>
+    <div class="node n-data">
+      <div class="badge">1999–2022</div>
+      <div class="label">Landsat 7 ETM+</div>
+      <div class="detail">SLC-off gap-filling applied<br>30 m · 6 spectral bands<br>STAC: landsat-c2-l2</div>
+    </div>
+    <div class="node n-data">
+      <div class="badge">2013–now</div>
+      <div class="label">Landsat 8/9 OLI</div>
+      <div class="detail">Collection 2 Level-2 SR<br>30 m · 7 spectral bands<br>STAC: landsat-c2-l2</div>
+    </div>
+    <div class="node n-data">
+      <div class="badge">2015–now</div>
+      <div class="label">Sentinel-2 MSI</div>
+      <div class="detail">Level-2A BOA reflectance<br>10 m (20 m SWIR) · SCL mask<br>STAC: sentinel-2-l2a</div>
+    </div>
+    <div class="node n-data">
+      <div class="badge">~2003–now</div>
+      <div class="label">NAIP Aerial</div>
+      <div class="detail">4-band RGBNIR<br>1 m native resolution<br>STAC: naip</div>
+    </div>
+  </div>
+
+  <hr class="sub-divider">
+  <div class="sub-header">Active / Elevation Sensors (all-weather)</div>
+  <div class="node-row">
+    <div class="node n-data">
+      <div class="badge">2014–now</div>
+      <div class="label">Sentinel-1 SAR</div>
+      <div class="detail">C-band GRD IW<br>VV + VH polarisation<br>10 m · STAC: sentinel-1-grd</div>
+    </div>
+    <div class="node n-data">
+      <div class="badge">static</div>
+      <div class="label">3DEP DEM</div>
+      <div class="detail">Copernicus GLO-30<br>30 m elevation model<br>STAC: cop-dem-glo-30</div>
+    </div>
+    <div class="node n-data">
+      <div class="badge">varies</div>
+      <div class="label">3DEP LiDAR</div>
+      <div class="detail">Point-cloud derivatives<br>Canopy height, intensity<br>USGS 3DEP program</div>
+    </div>
+  </div>
+
+  <hr class="sub-divider">
+  <div class="sub-header">Reference / Validation Datasets</div>
+  <div class="node-row">
+    <div class="node n-validate">
+      <div class="label">NLCD (USGS)</div>
+      <div class="detail">National Land Cover Database<br>30 m · 1992, 2001, 2004, 2006,<br>2008, 2011, 2013, 2016, 2019, 2021</div>
+    </div>
+    <div class="node n-validate">
+      <div class="label">Cropland Data Layer</div>
+      <div class="detail">USDA CDL annual crop maps<br>30 m · 2008–present<br>Agricultural validation</div>
+    </div>
+    <div class="node n-validate">
+      <div class="label">NWI Wetlands</div>
+      <div class="detail">National Wetlands Inventory<br>FWS vector polygons<br>Wetland type validation</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Connector ── -->
+<div class="connector">
+  <svg width="2" height="36"><line x1="1" y1="0" x2="1" y2="28" class="arrow-line"/>
+  <polygon points="-4,28 6,28 1,36" class="arrow-head"/></svg>
+  <span class="connector-label">Raw imagery + metadata per epoch</span>
+</div>
+
+<!-- ═══════════════ STEP 3: PREPROCESSING ═══════════════ -->
+<div class="section">
+  <span class="section-label" style="color:#2ecc71">Step 3 — Preprocessing & Alignment</span>
+
+  <div class="sub-header">Cloud Masking & Quality Control</div>
+  <div class="node-row">
+    <div class="node n-process">
+      <div class="label">Landsat QA_PIXEL</div>
+      <div class="detail">Bit-mask decoding<br>Cloud, shadow, cirrus, snow<br>Dilated cloud buffer</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">S2 Scene Classification</div>
+      <div class="detail">SCL band: keep veg (4),<br>soil (5), water (6), unclass (7)<br>Reject cloud/snow/shadow</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">L7 SLC-Off Gap Fill</div>
+      <div class="detail">Focal mean interpolation<br>for scan-line gaps (post-2003)<br>Quality flag propagation</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Clear-Pixel Filter</div>
+      <div class="detail">Reject scenes < 50% clear<br>Per-pixel valid count tracking<br>Observation quality score</div>
+    </div>
+  </div>
+
+  <hr class="sub-divider">
+  <div class="sub-header">Spatial Alignment & Resampling</div>
+  <div class="node-row">
+    <div class="node n-process">
+      <div class="label">Landsat → 30 m Grid</div>
+      <div class="detail">Native resolution snap<br>Nearest-neighbour regrid<br>DN → reflectance (×0.0000275−0.2)</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">S2 → 30 m Aggregate</div>
+      <div class="detail">10 m optical → 30 m area avg<br>20 m SWIR → 30 m area avg<br>Preserve spectral fidelity</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">NAIP → 30 m Aggregate</div>
+      <div class="detail">1 m → 30 m area-weighted<br>rasterio reproject + average<br>900:1 pixel ratio</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">SAR → 30 m Regrid</div>
+      <div class="detail">10 m GRD → 30 m average<br>Lee speckle filter (7×7)<br>σ⁰ dB calibration</div>
+    </div>
+  </div>
+
+  <hr class="sub-divider">
+  <div class="sub-header">Temporal Compositing (per year)</div>
+  <div class="node-row">
+    <div class="node n-process">
+      <div class="label">Annual Median Composite</div>
+      <div class="detail">Per-band pixel-wise median<br>Reduces cloud residuals<br>Stable reflectance baseline</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Greenest-Pixel Composite</div>
+      <div class="detail">Max-NDVI selection<br>Best vegetation signal<br>Peak growing season proxy</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Seasonal Quartile Stack</div>
+      <div class="detail">Q1 (DJF), Q2 (MAM),<br>Q3 (JJA), Q4 (SON)<br>Captures phenology</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Connector ── -->
+<div class="connector">
+  <svg width="2" height="36"><line x1="1" y1="0" x2="1" y2="28" class="arrow-line"/>
+  <polygon points="-4,28 6,28 1,36" class="arrow-head"/></svg>
+  <span class="connector-label">Aligned 30 m annual composites per sensor</span>
+</div>
+
+<!-- ═══════════════ STEP 4: FEATURE ENGINEERING ═══════════════ -->
+<div class="section">
+  <span class="section-label" style="color:#2ecc71">Step 4 — Feature Engineering</span>
+
+  <div class="sub-header">Spectral Indices (per composite)</div>
+  <div class="node-row">
+    <div class="node n-process">
+      <div class="label">Vegetation Indices</div>
+      <div class="detail">NDVI = (NIR−R)/(NIR+R)<br>EVI = 2.5·(NIR−R)/(NIR+6R−7.5B+1)<br>SAVI = 1.5·(NIR−R)/(NIR+R+0.5)</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Water Indices</div>
+      <div class="detail">NDWI = (G−NIR)/(G+NIR)<br>MNDWI = (G−SWIR1)/(G+SWIR1)<br>AWEI = 4(G−SWIR1)−(0.25NIR+2.75SWIR2)</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Built-Up Indices</div>
+      <div class="detail">NDBI = (SWIR1−NIR)/(SWIR1+NIR)<br>UI = (SWIR2−NIR)/(SWIR2+NIR)<br>BCI = (B+R−NIR)/(B+R+NIR)</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Soil / Barren Indices</div>
+      <div class="detail">BSI = (SWIR1+R−NIR−B)/(SWIR1+R+NIR+B)<br>LSWI = (NIR−SWIR1)/(NIR+SWIR1)<br>Clay ratio = SWIR1/SWIR2</div>
+    </div>
+  </div>
+
+  <hr class="sub-divider">
+  <div class="sub-header">SAR Features (2014+ only)</div>
+  <div class="node-row">
+    <div class="node n-process">
+      <div class="label">Backscatter (σ⁰)</div>
+      <div class="detail">VV mean, VH mean<br>Temporal std (change signal)<br>dB calibration</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Polarimetric Ratios</div>
+      <div class="detail">VH/VV cross-pol ratio<br>SAR Water Index (SWI)<br>Radar Vegetation Index</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">SAR-Derived Masks</div>
+      <div class="detail">Water: VV < −15 dB<br>Building: VV > −5 dB<br>Forest: VH/VV > −6 dB</div>
+    </div>
+  </div>
+
+  <hr class="sub-divider">
+  <div class="sub-header">Terrain & Elevation Features (static)</div>
+  <div class="node-row">
+    <div class="node n-static">
+      <div class="label">DEM Derivatives</div>
+      <div class="detail">Elevation (m ASL)<br>Slope (Horn 3×3°)<br>Aspect (0–360°)</div>
+    </div>
+    <div class="node n-static">
+      <div class="label">Hydrological Features</div>
+      <div class="detail">HAND (Height Above Nearest<br>Drainage) via multi-scale min<br>Topographic Position Index</div>
+    </div>
+    <div class="node n-static">
+      <div class="label">Curvature & Roughness</div>
+      <div class="detail">Plan / profile curvature<br>Terrain roughness index<br>Flow accumulation proxy</div>
+    </div>
+  </div>
+
+  <hr class="sub-divider">
+  <div class="sub-header">Texture Features (per composite)</div>
+  <div class="node-row">
+    <div class="node n-process">
+      <div class="label">GLCM Texture (NIR band)</div>
+      <div class="detail">Homogeneity · Entropy<br>Contrast · Correlation<br>5×5 window, 64 grey levels</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Morphological Features</div>
+      <div class="detail">Opening / closing profiles<br>Edge density<br>Patch size distribution</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Connector ── -->
+<div class="connector">
+  <svg width="2" height="36"><line x1="1" y1="0" x2="1" y2="28" class="arrow-line"/>
+  <polygon points="-4,28 6,28 1,36" class="arrow-head"/></svg>
+  <span class="connector-label">Feature stack: ~30 bands per pixel per year</span>
+</div>
+
+<!-- ═══════════════ STEP 5: QUANTUM CLASSIFICATION ═══════════════ -->
+<div class="section">
+  <span class="section-label" style="color:#8e44ad">Step 5 — Quantum-Enhanced Classification</span>
+
+  <div class="sub-header">5a. Self-Supervised Spectral Pre-Training</div>
+  <div class="node-row">
+    <div class="node n-ai">
+      <div class="label">Spectral Auto-Encoder</div>
+      <div class="detail">Encoder: 30→16→8 latent dims<br>Decoder: 8→16→30 reconstruction<br>Train on ALL unlabelled pixels</div>
+    </div>
+    <div class="node n-ai">
+      <div class="label">Contrastive Learning</div>
+      <div class="detail">Same-pixel different-time = positive<br>Different-pixel = negative<br>Temporal-invariant representations</div>
+    </div>
+    <div class="node n-quantum">
+      <div class="label">Quantum Latent Encoding</div>
+      <div class="detail">8-dim latent → 4-qubit state<br>Amplitude encoding (normalised)<br>Preserves spectral topology</div>
+    </div>
+  </div>
+
+  <div class="feedback"><span class="feedback-tag">⟲ Reconstruction loss → encoder weight update</span></div>
+
+  <hr class="sub-divider">
+  <div class="sub-header">5b. Quantum Feature Encoding</div>
+  <div class="node-row">
+    <div class="node n-quantum">
+      <div class="label">4-Qubit VQC</div>
+      <div class="detail">16 Hilbert-space basis states<br>RY rotation gates + CZ entanglement<br>Maps to 8 land-cover classes</div>
+    </div>
+    <div class="node n-quantum">
+      <div class="label">Amplitude Encoding</div>
+      <div class="detail">Normalise spectral vector to unit ℓ²<br>Encode as quantum amplitudes<br>Hardware-agnostic simulation</div>
+    </div>
+    <div class="node n-quantum">
+      <div class="label">Born Probability</div>
+      <div class="detail">|ψ|² → class probabilities<br>Natural uncertainty quantification<br>Entropy = classification confidence</div>
+    </div>
+    <div class="node n-quantum">
+      <div class="label">Quantum Temporal Encoding</div>
+      <div class="detail">Inter-year entanglement<br>CZ gates couple consecutive years<br>Captures temporal land-cover memory</div>
+    </div>
+  </div>
+
+  <hr class="sub-divider">
+  <div class="sub-header">5c. Multi-Classifier Ensemble</div>
+  <div class="node-row">
+    <div class="node n-quantum">
+      <div class="label">Quantum Kernel SVM</div>
+      <div class="detail">QFE-derived kernel matrix<br>K(x,x') = |⟨ψ(x)|ψ(x')⟩|²<br>SVC with probability calibration</div>
+    </div>
+    <div class="node n-ai">
+      <div class="label">Gradient Boosting</div>
+      <div class="detail">GradientBoostingClassifier<br>200 trees, depth 5, lr 0.1<br>Spectral + terrain features</div>
+    </div>
+    <div class="node n-ai">
+      <div class="label">Random Forest</div>
+      <div class="detail">500 trees, max features √n<br>Out-of-bag error estimate<br>Feature importance ranking</div>
+    </div>
+    <div class="node n-ai">
+      <div class="label">Temporal CNN</div>
+      <div class="detail">1D Conv over year axis<br>Captures multi-year trends<br>Kernels: 3yr, 5yr, 10yr windows</div>
+    </div>
+  </div>
+
+  <div class="feedback"><span class="feedback-tag">⟲ Pseudo-label refinement: SAR + spectral + terrain consensus → re-weight training</span></div>
+
+  <hr class="sub-divider">
+  <div class="sub-header">5d. Meta-Learner Fusion & Post-Processing</div>
+  <div class="node-row">
+    <div class="node n-ai">
+      <div class="label">Ridge Meta-Learner</div>
+      <div class="detail">Stacking: QK-SVM + GB + RF + CNN<br>Ridge regression on class probs<br>Learned per-classifier weights</div>
+    </div>
+    <div class="node n-quantum">
+      <div class="label">Quantum Uncertainty Fusion</div>
+      <div class="detail">Born-rule entropy weighting<br>High-entropy → ensemble fallback<br>Low-entropy → trust quantum output</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Physics Constraints</div>
+      <div class="detail">Transition rules matrix<br>No water→forest in 1 year<br>Urban is permanent (no revert)</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Morphological Clean-Up</div>
+      <div class="detail">Connected component ≥ 4 px<br>Mode filter 3×3<br>Boundary smoothing</div>
+    </div>
+  </div>
+
+  <div class="feedback"><span class="feedback-tag">⟲ Temporal consistency check: adjacent-year Markov constraint → relabel violations</span></div>
+</div>
+
+<!-- ── Connector ── -->
+<div class="connector">
+  <svg width="2" height="36"><line x1="1" y1="0" x2="1" y2="28" class="arrow-line"/>
+  <polygon points="-4,28 6,28 1,36" class="arrow-head"/></svg>
+  <span class="connector-label">Per-year classified land-cover map (8 classes × 30 m)</span>
+</div>
+
+<!-- ═══════════════ STEP 6: CHANGE DETECTION ═══════════════ -->
+<div class="section">
+  <span class="section-label" style="color:var(--orange)">Step 6 — Change Detection Engine</span>
+
+  <div class="node-row">
+    <div class="node n-process">
+      <div class="label">Yearly Classification Stack</div>
+      <div class="detail">1990, 1991, …, 2025<br>~35 annual maps<br>Consistent 8-class scheme</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Transition Matrix</div>
+      <div class="detail">8×8 from→to counts per period<br>Normalized gain/loss percentages<br>Net change per class</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Change Magnitude Map</div>
+      <div class="detail">Spectral distance (Euclidean)<br>between epoch composites<br>Continuous change intensity</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Then-and-Now Comparison</div>
+      <div class="detail">1990 vs 2025 class maps<br>Pixel-level change/no-change<br>Categorical difference raster</div>
+    </div>
+  </div>
+
+  <hr class="sub-divider">
+  <div class="sub-header">Temporal Aggregation</div>
+  <div class="node-row">
+    <div class="node n-output">
+      <div class="label">Decade Summaries</div>
+      <div class="detail">1990s → 2000s change<br>2000s → 2010s change<br>2010s → 2020s change</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Trend Analysis</div>
+      <div class="detail">Per-pixel class frequency<br>Dominant trend (urbanising,<br>greening, stable, degrading)</div>
+    </div>
+    <div class="node n-process">
+      <div class="label">Rate-of-Change Metrics</div>
+      <div class="detail">Annual conversion rate (ha/yr)<br>Acceleration / deceleration<br>Confidence intervals</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Connector ── -->
+<div class="connector">
+  <svg width="2" height="36"><line x1="1" y1="0" x2="1" y2="28" class="arrow-line"/>
+  <polygon points="-4,28 6,28 1,36" class="arrow-head"/></svg>
+  <span class="connector-label">Change maps + transition matrices + trend layers</span>
+</div>
+
+<!-- ═══════════════ STEP 7: ACCURACY ASSESSMENT ═══════════════ -->
+<div class="section">
+  <span class="section-label" style="color:var(--teal)">Step 7 — Accuracy Assessment</span>
+
+  <div class="node-row">
+    <div class="node n-validate">
+      <div class="label">NLCD Cross-Validation</div>
+      <div class="detail">Compare vs NLCD epochs<br>(1992, 2001, 2006, 2011,<br>2016, 2019, 2021)</div>
+    </div>
+    <div class="node n-validate">
+      <div class="label">Confusion Matrix</div>
+      <div class="detail">Per-epoch 8×8 matrix<br>Overall accuracy (OA%)<br>Cohen's Kappa (κ)</div>
+    </div>
+    <div class="node n-validate">
+      <div class="label">Per-Class Metrics</div>
+      <div class="detail">Producer's accuracy (omission)<br>User's accuracy (commission)<br>F1 score per class</div>
+    </div>
+    <div class="node n-validate">
+      <div class="label">Temporal Consistency</div>
+      <div class="detail">Adjacent-year agreement %<br>Impossible transition count<br>Markov chain divergence</div>
+    </div>
+  </div>
+
+  <div class="feedback"><span class="feedback-tag">⟲ Low-accuracy classes feed back to training: boost sample weight in classifier ensemble</span></div>
+</div>
+
+<!-- ── Connector ── -->
+<div class="connector">
+  <svg width="2" height="36"><line x1="1" y1="0" x2="1" y2="28" class="arrow-line"/>
+  <polygon points="-4,28 6,28 1,36" class="arrow-head"/></svg>
+  <span class="connector-label">Accuracy metrics + validated class maps</span>
+</div>
+
+<!-- ═══════════════ STEP 8: OUTPUTS ═══════════════ -->
+<div class="section">
+  <span class="section-label" style="color:var(--amber)">Step 8 — Visualization & Outputs</span>
+
+  <div class="sub-header">Raster Outputs (GeoTIFF)</div>
+  <div class="node-row">
+    <div class="node n-output">
+      <div class="label">Annual Class Maps</div>
+      <div class="detail">landcover_YYYY.tif<br>8-class categorical raster<br>COG + colour table + CRS</div>
+    </div>
+    <div class="node n-output">
+      <div class="label">Then-and-Now Change</div>
+      <div class="detail">change_1990_2025.tif<br>Categorical from→to codes<br>+ binary change mask</div>
+    </div>
+    <div class="node n-output">
+      <div class="label">Decade Change Maps</div>
+      <div class="detail">change_1990s_2000s.tif<br>change_2000s_2010s.tif<br>change_2010s_2020s.tif</div>
+    </div>
+    <div class="node n-output">
+      <div class="label">Confidence Raster</div>
+      <div class="detail">Born-rule entropy per pixel<br>[0=certain, 1=ambiguous]<br>Spatial uncertainty surface</div>
+    </div>
+  </div>
+
+  <hr class="sub-divider">
+  <div class="sub-header">Charts & Statistics</div>
+  <div class="node-row">
+    <div class="node n-output">
+      <div class="label">Area Time Series</div>
+      <div class="detail">Class area (ha) by year<br>Stacked area chart<br>Shows urbanisation trend</div>
+    </div>
+    <div class="node n-output">
+      <div class="label">Transition Sankey</div>
+      <div class="detail">From → To flow diagram<br>Width = area transferred<br>Per-decade Sankey</div>
+    </div>
+    <div class="node n-output">
+      <div class="label">Confusion Heatmaps</div>
+      <div class="detail">Per-epoch accuracy matrix<br>Annotated with OA%, κ<br>Class-level precision/recall</div>
+    </div>
+    <div class="node n-output">
+      <div class="label">Change Statistics CSV</div>
+      <div class="detail">Gain/loss per class per decade<br>Annual rates (ha/yr)<br>Machine-readable summary</div>
+    </div>
+  </div>
+
+  <hr class="sub-divider">
+  <div class="sub-header">Interactive Maps</div>
+  <div class="node-row">
+    <div class="node n-output">
+      <div class="label">Folium HTML Map</div>
+      <div class="detail">Toggle layers per year/decade<br>Class legend overlay<br>Zoom to any pixel</div>
+    </div>
+    <div class="node n-output">
+      <div class="label">Side-by-Side Swiper</div>
+      <div class="detail">1990 vs 2025 comparison<br>Drag slider to reveal change<br>Leaflet split-map plugin</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end .flow -->
+
+<!-- ═══════════════ DATA FLOW TABLE ═══════════════ -->
+<div style="max-width:1400px; margin:32px auto 0;">
+  <h2 style="text-align:center; font-size:16px; color:var(--accent); margin-bottom:12px;">
+    Complete Data-Flow Connections
+  </h2>
+  <table class="connection-table">
+    <thead>
+      <tr>
+        <th>Source</th>
+        <th>Destination</th>
+        <th>Data Transferred</th>
+        <th>Reason / Purpose</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>AOI Builder</td><td>Acquisition</td><td>WGS-84 bbox + UTM bounds</td><td>Spatial query envelope for all STAC searches</td></tr>
+      <tr><td>Epoch Defn</td><td>Acquisition</td><td>Date ranges per epoch</td><td>Temporal filtering of satellite imagery</td></tr>
+      <tr><td>Landsat TM/ETM+/OLI</td><td>Cloud Masking</td><td>QA_PIXEL band</td><td>Identify cloudy/shadow/snow pixels for exclusion</td></tr>
+      <tr><td>Sentinel-2</td><td>Cloud Masking</td><td>SCL band</td><td>Scene classification for clear-sky filtering</td></tr>
+      <tr><td>All optical sensors</td><td>Spatial Alignment</td><td>Multi-res reflectance</td><td>Regrid/downsample to common 30 m target grid</td></tr>
+      <tr><td>Sentinel-1 SAR</td><td>SAR Feature Engine</td><td>VV, VH σ⁰</td><td>Vegetation/water/urban discrimination (all-weather)</td></tr>
+      <tr><td>3DEP DEM</td><td>Terrain Engine</td><td>Elevation array</td><td>Slope, HAND, curvature — topographic context</td></tr>
+      <tr><td>3DEP LiDAR</td><td>Canopy Features</td><td>CHM, intensity</td><td>Tree height → forest/shrub discrimination</td></tr>
+      <tr><td>Aligned composites</td><td>Spectral Indices</td><td>B, G, R, NIR, SWIR1, SWIR2</td><td>Calculate NDVI, NDWI, NDBI, BSI, etc.</td></tr>
+      <tr><td>NIR composite</td><td>GLCM Texture</td><td>NIR grey-level image</td><td>Texture contrast → urban/forest separation</td></tr>
+      <tr><td>Feature stack</td><td>Auto-Encoder</td><td>30-band pixel vectors</td><td>Self-supervised pre-training (learn spectral manifold)</td></tr>
+      <tr><td>Auto-Encoder</td><td>4-Qubit VQC</td><td>8-dim latent codes</td><td>Compact representation for quantum amplitude encoding</td></tr>
+      <tr><td>4-Qubit VQC</td><td>Born Probability</td><td>|ψ⟩ state vector</td><td>Collapse to class probabilities via |ψ|²</td></tr>
+      <tr><td>Feature stack</td><td>QK-SVM</td><td>Feature + quantum kernel</td><td>Quantum-inspired kernel for SVM classification</td></tr>
+      <tr><td>Feature stack</td><td>GB + RF + CNN</td><td>30-band features</td><td>Classical ensemble members for diversity</td></tr>
+      <tr><td>All classifiers</td><td>Ridge Meta-Learner</td><td>Class probability vectors</td><td>Learned optimal combination of all classifiers</td></tr>
+      <tr><td>Meta-Learner output</td><td>Physics Constraints</td><td>Per-year class labels</td><td>Enforce valid land-cover transitions over time</td></tr>
+      <tr><td>Physics output</td><td>Morph Clean-Up</td><td>Classified map</td><td>Remove salt-and-pepper noise, smooth boundaries</td></tr>
+      <tr><td>Annual class maps</td><td>Change Detection</td><td>Classification stack</td><td>Cross-tabulate year-to-year transitions</td></tr>
+      <tr><td>Change Detection</td><td>Transition Matrix</td><td>Per-period transitions</td><td>Quantify from→to area for all class pairs</td></tr>
+      <tr><td>Annual class maps</td><td>NLCD Comparison</td><td>Classified years matching NLCD</td><td>Accuracy assessment against reference data</td></tr>
+      <tr><td>NLCD reference</td><td>Confusion Matrix</td><td>True vs predicted labels</td><td>OA, κ, F1, producer's/user's accuracy</td></tr>
+      <tr><td>Low-accuracy classes</td><td>Classifier Ensemble</td><td>Re-weighted samples</td><td>Feedback: boost under-performing classes</td></tr>
+      <tr><td>Change maps</td><td>Folium HTML</td><td>Raster overlays</td><td>Interactive web map with layer toggles</td></tr>
+      <tr><td>Transition matrices</td><td>Sankey Diagram</td><td>From→to flows</td><td>Visual summary of land-cover conversions</td></tr>
+      <tr><td>Area stats</td><td>Time Series Chart</td><td>Class area per year</td><td>Trend visualization (urbanisation, deforestation)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════ SUMMARY STATS ═══════════════ -->
+<div class="stats-row">
+  <div class="stat-card"><div class="val">8</div><div class="lbl">Data Sources</div></div>
+  <div class="stat-card"><div class="val">35</div><div class="lbl">Annual Maps</div></div>
+  <div class="stat-card"><div class="val">~30</div><div class="lbl">Features / Pixel</div></div>
+  <div class="stat-card"><div class="val">4</div><div class="lbl">Qubits</div></div>
+  <div class="stat-card"><div class="val">8</div><div class="lbl">Land-Cover Classes</div></div>
+  <div class="stat-card"><div class="val">5</div><div class="lbl">Classifiers</div></div>
+  <div class="stat-card"><div class="val">4</div><div class="lbl">Decades</div></div>
+  <div class="stat-card"><div class="val">30 m</div><div class="lbl">Resolution</div></div>
+</div>
+
+<div style="text-align:center; margin-top:24px; font-size:11px; color:var(--dim);">
+  Quantum Land-Cover Change Detector v1.0 &bull; GeoScriptHub &bull;
+  Pipeline architecture generated 2026-03-01
+</div>
+
+</body>
+</html>

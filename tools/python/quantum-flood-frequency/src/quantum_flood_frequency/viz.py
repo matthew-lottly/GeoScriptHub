@@ -192,10 +192,10 @@ class FloodMapper:
 
         # Legend for zone categories
         legend_patches = [
-            mpatches.Patch(facecolor="#0A1929", label=f"Permanent (≥{90}%)"),
-            mpatches.Patch(facecolor="#1565C0", label=f"Seasonal ({25}–{90}%)"),
-            mpatches.Patch(facecolor="#64B5F6", label=f"Rare ({5}–{25}%)"),
-            mpatches.Patch(facecolor="#FFFFFF", edgecolor="#999", label=f"Dry (<{5}%)"),
+            mpatches.Patch(facecolor="#0A1929", label="Permanent (≥85%)"),
+            mpatches.Patch(facecolor="#1565C0", label="Seasonal (20–85%)"),
+            mpatches.Patch(facecolor="#64B5F6", label="Rare (5–20%)"),
+            mpatches.Patch(facecolor="#FFFFFF", edgecolor="#999", label="Dry (<5%)"),
         ]
         ax.legend(
             handles=legend_patches,
@@ -210,8 +210,8 @@ class FloodMapper:
         sensors = self.result.sensor_counts
         ax.annotate(
             f"Observations: {n_obs}  |  Sensors: {sensors}\n"
-            f"CRS: {self.result.crs}  |  Resolution: 10 m (super-resolved)\n"
-            f"Method: QIEC v2.0 (3-Qubit Quantum-Inspired Ensemble, SR upsampled)",
+            f"CRS: {self.result.crs}  |  Resolution: 30 m (aggregate)\n"
+            f"Method: QIEC v4.0 (3-Qubit Quantum-Inspired Ensemble, 30 m aggregate)",
             xy=(0.01, 0.01), xycoords="axes fraction",
             fontsize=7, va="bottom",
             bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8),
@@ -335,9 +335,9 @@ class FloodMapper:
 
         # Combined legend
         freq_patches = [
-            mpatches.Patch(facecolor="#0A1929", label="Permanent water (≥90%)"),
-            mpatches.Patch(facecolor="#2196F3", label="Seasonal/rare flood"),
-            mpatches.Patch(facecolor="#FFFFFF", edgecolor="#999", label="Dry land"),
+            mpatches.Patch(facecolor="#0A1929", label="Permanent water (≥85%)"),
+            mpatches.Patch(facecolor="#2196F3", label="Seasonal/rare flood (5–85%)"),
+            mpatches.Patch(facecolor="#FFFFFF", edgecolor="#999", label="Dry land (<5%)"),
         ]
         all_patches = freq_patches + fema_legend_patches
         ax.legend(
@@ -351,8 +351,8 @@ class FloodMapper:
 
         # Metadata
         ax.annotate(
-            "Frequency: QIEC v2.0 hybrid model  |  Overlay: FEMA NFHL (hatched, 40% opacity)\n"
-            f"CRS: {self.result.crs}  |  Resolution: 10 m (super-resolved)",
+            "Frequency: QIEC v4.0 hybrid model  |  Overlay: FEMA NFHL (hatched, 40% opacity)\n"
+            f"CRS: {self.result.crs}  |  Resolution: 30 m (aggregate)",
             xy=(0.01, 0.01), xycoords="axes fraction",
             fontsize=7, va="bottom",
             bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8),
@@ -583,8 +583,8 @@ class FloodMapper:
             linewidth=0.3, alpha=0.85,
         )
         axes[1].axvline(0.05, color="orange", linestyle="--", linewidth=1, label="5% (rare)")
-        axes[1].axvline(0.25, color="red", linestyle="--", linewidth=1, label="25% (seasonal)")
-        axes[1].axvline(0.90, color="navy", linestyle="--", linewidth=1, label="90% (permanent)")
+        axes[1].axvline(0.20, color="red", linestyle="--", linewidth=1, label="20% (seasonal)")
+        axes[1].axvline(0.85, color="navy", linestyle="--", linewidth=1, label="85% (permanent)")
         axes[1].set_title("Flood Frequency Distribution", fontweight="bold")
         axes[1].set_xlabel("Inundation Frequency")
         axes[1].set_ylabel("Pixel Count")

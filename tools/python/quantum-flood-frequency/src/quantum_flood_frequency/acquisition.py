@@ -103,6 +103,7 @@ class SensorStack:
     sentinel2_count: int
     sentinel1_count: int
     naip_count: int
+    naip_items: list  # signed STAC items for rasterio-based reading
     aoi: AOIResult
 
     def __repr__(self) -> str:  # noqa: D105
@@ -202,6 +203,7 @@ class MultiSensorAcquisition:
             sentinel2_count=n_s2,
             sentinel1_count=n_s1,
             naip_count=n_naip,
+            naip_items=getattr(self, "_naip_items", []),
             aoi=self.aoi,
         )
 
@@ -288,6 +290,9 @@ class MultiSensorAcquisition:
         NAIP has no ``eo:cloud_cover`` field — it is acquired under
         clear-sky conditions by contract.  We fetch all available tiles
         within the time window.
+
+        Returns the STAC items directly for rasterio-based reading
+        (stackstac can't handle NAIP's 4-band single-asset structure).
         """
         logger.info("Querying NAIP imagery …")
 
@@ -306,18 +311,23 @@ class MultiSensorAcquisition:
 
         signed = [planetary_computer.sign(item) for item in items]
 
-        stack = stackstac.stack(
-            signed,
-            assets=NAIP_BANDS,
-            resolution=NAIP_RESOLUTION,
-            epsg=int(self.aoi.target_crs.split(":")[1]),
-            bounds=self.aoi.bbox_utm,
-            chunksize=self.chunk_size,
-            dtype=np.dtype("float64"),
-            fill_value=np.nan,
+        # Store signed STAC items for direct rasterio reading in preprocessing
+        # (stackstac can't split NAIP's 4-band image asset into separate bands)
+        self._naip_items = signed
+
+        # Return a placeholder DataArray with time dim so preprocessing knows
+        # how many scenes to expect; actual reading happens via rasterio
+        times = np.array([
+            np.datetime64(item.datetime) for item in signed
+        ])
+        placeholder = xr.DataArray(
+            data=np.zeros((n_items, 1, 1, 1), dtype="float32"),
+            dims=("time", "band", "y", "x"),
+            coords={"time": times},
+            attrs={"_naip_items": "use_rasterio"},
         )
 
-        return stack, n_items
+        return placeholder, n_items
 
     def _fetch_sentinel1(
         self, catalog: pystac_client.Client

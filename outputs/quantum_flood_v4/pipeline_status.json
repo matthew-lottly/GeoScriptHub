@@ -1,0 +1,62 @@
+{
+  "elapsed_seconds": 3700.0,
+  "timestamp": "2026-03-01T23:47:19",
+  "steps": {
+    "AOI": {
+      "status": "green",
+      "detail": "Houston, TX flood study area, centred at (29.7565\u00b0N, 95.0854\u00b0W), \u224835.9 km\u00b2"
+    },
+    "Landsat": {
+      "status": "green",
+      "detail": "268 scenes"
+    },
+    "Sentinel-2": {
+      "status": "green",
+      "detail": "1587 scenes"
+    },
+    "NAIP": {
+      "status": "green",
+      "detail": "20 items"
+    },
+    "Sentinel-1 SAR": {
+      "status": "green",
+      "detail": "1466 scenes"
+    },
+    "Copernicus DEM": {
+      "status": "green",
+      "detail": "loaded"
+    },
+    "Preprocessing": {
+      "status": "green",
+      "detail": "13 scenes aligned to 30m"
+    },
+    "SAR Processing": {
+      "status": "green",
+      "detail": "0 obs, water=0"
+    },
+    "Terrain/DEM": {
+      "status": "yellow",
+      "detail": "no DEM data available"
+    },
+    "Classification": {
+      "status": "green",
+      "detail": "13 observations classified"
+    },
+    "Flood Frequency": {
+      "status": "green",
+      "detail": "permanent=173 seasonal=23624"
+    },
+    "USGS Gauge Data": {
+      "status": "green",
+      "detail": "6 stations, 13 dates matched"
+    },
+    "FEMA Zones": {
+      "status": "green",
+      "detail": "120 polygons"
+    },
+    "Visualisation": {
+      "status": "green",
+      "detail": "4 outputs generated"
+    }
+  }
+}

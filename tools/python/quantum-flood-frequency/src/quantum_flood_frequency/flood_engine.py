@@ -38,6 +38,7 @@ from rasterio.transform import Affine, from_bounds
 
 from .quantum_classifier import ClassificationResult
 from .preprocessing import AlignedStack
+from .terrain import TerrainFeatures
 
 logger = logging.getLogger("geoscripthub.quantum_flood_frequency.flood_engine")
 
@@ -45,10 +46,15 @@ logger = logging.getLogger("geoscripthub.quantum_flood_frequency.flood_engine")
 # Zone thresholds (fraction of observations)
 # ---------------------------------------------------------------------------
 
-PERMANENT_THRESHOLD = 0.90   # ≥90 % → permanent water
-SEASONAL_LOW = 0.25          # 25–90 % → seasonal flood zone
-RARE_LOW = 0.05              # 5–25 % → rare flood zone
+PERMANENT_THRESHOLD = 0.85   # ≥85 % → permanent water (was 0.90, lowered for streams)
+SEASONAL_LOW = 0.20          # 20–85 % → seasonal flood zone (was 0.25)
+RARE_LOW = 0.05              # 5–20 % → rare flood zone
 # < 5 % → dry land / noise
+
+# Stream detection — v4.0
+# Low-HAND pixels that are wet even at moderate frequency are streams.
+STREAM_HAND_THRESHOLD = 5.0   # metres — pixels below this near channels
+STREAM_FREQ_THRESHOLD = 0.50  # freq ≥ 50% + low HAND → permanent stream
 
 
 # ---------------------------------------------------------------------------
@@ -121,6 +127,7 @@ class FloodFrequencyEngine:
         self,
         stack: AlignedStack,
         confidence_level: float = 0.95,
+        terrain_features: Optional[TerrainFeatures] = None,
     ) -> None:
         self.rows = stack.rows
         self.cols = stack.cols
@@ -128,6 +135,7 @@ class FloodFrequencyEngine:
         self.crs = stack.crs
         self.bounds = stack.bounds
         self.confidence_level = confidence_level
+        self.terrain_features = terrain_features
 
         # Build a proper rasterio Affine from the 6-tuple
         self.transform = from_bounds(
@@ -177,9 +185,29 @@ class FloodFrequencyEngine:
 
         # Zone masks
         permanent = frequency >= PERMANENT_THRESHOLD
-        seasonal = (frequency >= SEASONAL_LOW) & (frequency < PERMANENT_THRESHOLD)
-        rare = (frequency >= RARE_LOW) & (frequency < SEASONAL_LOW)
-        dry = frequency < RARE_LOW
+
+        # v4.0 Stream-aware permanent water:
+        # Low-HAND pixels that are wet at ≥50% frequency are most likely
+        # permanent streams/channels even if they don't reach the 85% threshold.
+        # Streams are narrow (few pixels) and can be missed by some cloud-free
+        # observations or have borderline classification confidence.
+        terrain = self.terrain_features
+        if terrain is not None and terrain.valid_mask.any():
+            low_hand = terrain.hand < STREAM_HAND_THRESHOLD
+            stream_permanent = low_hand & (frequency >= STREAM_FREQ_THRESHOLD)
+            n_stream_added = int(stream_permanent.sum() - (stream_permanent & permanent).sum())
+            permanent = permanent | stream_permanent
+            if n_stream_added > 0:
+                logger.info(
+                    "Stream detection: %d additional permanent water px "
+                    "(HAND < %.0f m & freq ≥ %.0f%%)",
+                    n_stream_added, STREAM_HAND_THRESHOLD,
+                    STREAM_FREQ_THRESHOLD * 100,
+                )
+
+        seasonal = (frequency >= SEASONAL_LOW) & ~permanent
+        rare = (frequency >= RARE_LOW) & ~permanent & ~seasonal
+        dry = (frequency < RARE_LOW) | np.isnan(frequency)
 
         # Wilson score confidence interval for binomial proportion
         lower, upper = self._wilson_interval(water_count, obs_count)

@@ -39,8 +39,8 @@ class TestAOIBuilder:
     def test_default_aoi_builds(self) -> None:
         aoi = AOIBuilder().build()
 
-        assert aoi.center_lat == pytest.approx(29.76, abs=0.01)
-        assert aoi.center_lon == pytest.approx(-95.37, abs=0.01)
+        assert aoi.center_lat == pytest.approx(29.756, abs=0.01)
+        assert aoi.center_lon == pytest.approx(-95.085, abs=0.01)
         assert aoi.target_crs == "EPSG:32615"
         assert aoi.area_km2 > 0
 

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "quantum-flood-frequency"
-version = "2.0.0"
-description = "Pseudo-quantum hybrid AI flood frequency mapper with super-resolution upsampling, fusing Landsat, Sentinel-2, and NAIP imagery at 10 m resolution"
+version = "4.0.0"
+description = "Pseudo-quantum hybrid AI flood frequency mapper with multi-sensor aggregation, fusing Landsat, Sentinel-2, NAIP, SAR, and DEM imagery at 30 m resolution"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }

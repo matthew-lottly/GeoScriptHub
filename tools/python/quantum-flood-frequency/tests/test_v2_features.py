@@ -465,29 +465,29 @@ class TestNewSpectralIndices:
 
 
 class TestTargetResolution:
-    """Verify that the v3.0 target resolution is 1 m (NAIP native)."""
+    """Verify that the v4.0 target resolution is 30 m (Landsat native)."""
 
-    def test_target_resolution_is_1m(self) -> None:
-        assert TARGET_RESOLUTION == 1
+    def test_target_resolution_is_30m(self) -> None:
+        assert TARGET_RESOLUTION == 30
 
     def test_aligned_stack_resolution_field(self) -> None:
         stack = AlignedStack(
             observations=[], rows=10, cols=10,
-            resolution=1,
-            transform=(0.0, 1.0, 0.0, 100.0, 0.0, -1.0),
+            resolution=30,
+            transform=(0.0, 30.0, 0.0, 100.0, 0.0, -30.0),
             crs="EPSG:32615",
-            bounds=(0.0, 0.0, 10.0, 10.0),
+            bounds=(0.0, 0.0, 300.0, 300.0),
         )
-        assert stack.resolution == 1
+        assert stack.resolution == 30
 
     def test_aligned_stack_default_resolution(self) -> None:
         stack = AlignedStack(
             observations=[], rows=10, cols=10,
-            transform=(0.0, 1.0, 0.0, 100.0, 0.0, -1.0),
+            transform=(0.0, 30.0, 0.0, 100.0, 0.0, -30.0),
             crs="EPSG:32615",
-            bounds=(0.0, 0.0, 10.0, 10.0),
+            bounds=(0.0, 0.0, 300.0, 300.0),
         )
-        assert stack.resolution == 1  # default from TARGET_RESOLUTION
+        assert stack.resolution == 30  # default from TARGET_RESOLUTION
 
 
 # ======================================================================

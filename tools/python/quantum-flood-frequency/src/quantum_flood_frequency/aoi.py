@@ -25,13 +25,13 @@ from pyproj import Transformer
 logger = logging.getLogger("geoscripthub.quantum_flood_frequency.aoi")
 
 # ---------------------------------------------------------------------------
-# Houston, TX — flood-prone metropolitan area
-# Downtown Houston ≈ 29.76°N, 95.37°W
-# Covers Buffalo Bayou, Brays Bayou, and surrounding watersheds
+# East Houston / San Jacinto River — flood-prone area
+# 29.7565°N, 95.0854°W — San Jacinto River corridor
+# Covers river channel, bayous, floodplains, and surrounding development
 # ---------------------------------------------------------------------------
-_DEFAULT_CENTER_LAT = 29.76
-_DEFAULT_CENTER_LON = -95.37
-_DEFAULT_BUFFER_KM = 5.0  # ~5 km in each direction from centre
+_DEFAULT_CENTER_LAT = 29.75645586726091
+_DEFAULT_CENTER_LON = -95.08540365044576
+_DEFAULT_BUFFER_KM = 3.0  # ~3 km in each direction from centre
 
 # Target CRS for all raster processing
 TARGET_CRS = "EPSG:32615"  # UTM Zone 15N (covers Houston, TX)

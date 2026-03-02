@@ -1,0 +1,169 @@
+observation_date,sensor,site_id,site_name,latitude,longitude,window,gage_height_ft,gage_height_m,discharge_cfs,any_flooding
+2022-09-14,naip,08067520,"Goose Ck nr McNair, TX",29.801497,-95.004744,day_before,15.51,4.727,,False
+2022-09-14,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_before,1.72,0.524,,False
+2022-09-14,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_before,1.73,0.527,,False
+2022-09-14,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_before,2.36,0.719,,False
+2022-09-14,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_before,8.79,2.679,,False
+2022-09-14,naip,08067520,"Goose Ck nr McNair, TX",29.801497,-95.004744,day_of,15.64,4.767,,False
+2022-09-14,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_of,3.10,0.945,,False
+2022-09-14,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_of,1.82,0.555,,False
+2022-09-14,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_of,2.35,0.716,,False
+2022-09-14,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_of,6.82,2.079,,False
+2022-09-14,naip,08067520,"Goose Ck nr McNair, TX",29.801497,-95.004744,day_after,15.78,4.810,,False
+2022-09-14,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_after,5.44,1.658,,False
+2022-09-14,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_after,2.34,0.713,,False
+2022-09-14,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_after,2.38,0.725,,False
+2022-09-14,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_after,5.91,1.801,,False
+2022-09-14,naip,08067520,"Goose Ck nr McNair, TX",29.801497,-95.004744,day_before,15.51,4.727,,False
+2022-09-14,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_before,1.72,0.524,,False
+2022-09-14,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_before,1.73,0.527,,False
+2022-09-14,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_before,2.36,0.719,,False
+2022-09-14,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_before,8.79,2.679,,False
+2022-09-14,naip,08067520,"Goose Ck nr McNair, TX",29.801497,-95.004744,day_of,15.64,4.767,,False
+2022-09-14,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_of,3.10,0.945,,False
+2022-09-14,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_of,1.82,0.555,,False
+2022-09-14,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_of,2.35,0.716,,False
+2022-09-14,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_of,6.82,2.079,,False
+2022-09-14,naip,08067520,"Goose Ck nr McNair, TX",29.801497,-95.004744,day_after,15.78,4.810,,False
+2022-09-14,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_after,5.44,1.658,,False
+2022-09-14,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_after,2.34,0.713,,False
+2022-09-14,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_after,2.38,0.725,,False
+2022-09-14,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_after,5.91,1.801,,False
+2022-09-14,naip,08067520,"Goose Ck nr McNair, TX",29.801497,-95.004744,day_before,15.51,4.727,,False
+2022-09-14,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_before,1.72,0.524,,False
+2022-09-14,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_before,1.73,0.527,,False
+2022-09-14,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_before,2.36,0.719,,False
+2022-09-14,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_before,8.79,2.679,,False
+2022-09-14,naip,08067520,"Goose Ck nr McNair, TX",29.801497,-95.004744,day_of,15.64,4.767,,False
+2022-09-14,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_of,3.10,0.945,,False
+2022-09-14,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_of,1.82,0.555,,False
+2022-09-14,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_of,2.35,0.716,,False
+2022-09-14,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_of,6.82,2.079,,False
+2022-09-14,naip,08067520,"Goose Ck nr McNair, TX",29.801497,-95.004744,day_after,15.78,4.810,,False
+2022-09-14,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_after,5.44,1.658,,False
+2022-09-14,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_after,2.34,0.713,,False
+2022-09-14,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_after,2.38,0.725,,False
+2022-09-14,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_after,5.91,1.801,,False
+2022-09-14,naip,08067520,"Goose Ck nr McNair, TX",29.801497,-95.004744,day_before,15.51,4.727,,False
+2022-09-14,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_before,1.72,0.524,,False
+2022-09-14,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_before,1.73,0.527,,False
+2022-09-14,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_before,2.36,0.719,,False
+2022-09-14,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_before,8.79,2.679,,False
+2022-09-14,naip,08067520,"Goose Ck nr McNair, TX",29.801497,-95.004744,day_of,15.64,4.767,,False
+2022-09-14,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_of,3.10,0.945,,False
+2022-09-14,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_of,1.82,0.555,,False
+2022-09-14,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_of,2.35,0.716,,False
+2022-09-14,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_of,6.82,2.079,,False
+2022-09-14,naip,08067520,"Goose Ck nr McNair, TX",29.801497,-95.004744,day_after,15.78,4.810,,False
+2022-09-14,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_after,5.44,1.658,,False
+2022-09-14,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_after,2.34,0.713,,False
+2022-09-14,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_after,2.38,0.725,,False
+2022-09-14,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_after,5.91,1.801,,False
+2020-11-18,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_before,1.77,0.539,,False
+2020-11-18,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_before,1.44,0.439,,False
+2020-11-18,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_before,4.38,1.335,,False
+2020-11-18,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_before,3.47,1.058,,False
+2020-11-18,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_of,1.76,0.536,,False
+2020-11-18,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_of,1.92,0.585,,False
+2020-11-18,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_of,4.60,1.402,,False
+2020-11-18,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_of,3.70,1.128,,False
+2020-11-18,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_after,2.36,0.719,,False
+2020-11-18,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_after,2.09,0.637,,False
+2020-11-18,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_after,4.55,1.387,,False
+2020-11-18,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_after,3.90,1.189,,False
+2020-11-18,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_before,1.77,0.539,,False
+2020-11-18,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_before,1.44,0.439,,False
+2020-11-18,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_before,4.38,1.335,,False
+2020-11-18,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_before,3.47,1.058,,False
+2020-11-18,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_of,1.76,0.536,,False
+2020-11-18,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_of,1.92,0.585,,False
+2020-11-18,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_of,4.60,1.402,,False
+2020-11-18,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_of,3.70,1.128,,False
+2020-11-18,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_after,2.36,0.719,,False
+2020-11-18,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_after,2.09,0.637,,False
+2020-11-18,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_after,4.55,1.387,,False
+2020-11-18,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_after,3.90,1.189,,False
+2020-11-18,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_before,1.77,0.539,,False
+2020-11-18,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_before,1.44,0.439,,False
+2020-11-18,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_before,4.38,1.335,,False
+2020-11-18,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_before,3.47,1.058,,False
+2020-11-18,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_of,1.76,0.536,,False
+2020-11-18,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_of,1.92,0.585,,False
+2020-11-18,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_of,4.60,1.402,,False
+2020-11-18,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_of,3.70,1.128,,False
+2020-11-18,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_after,2.36,0.719,,False
+2020-11-18,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_after,2.09,0.637,,False
+2020-11-18,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_after,4.55,1.387,,False
+2020-11-18,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_after,3.90,1.189,,False
+2020-11-18,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_before,1.77,0.539,,False
+2020-11-18,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_before,1.44,0.439,,False
+2020-11-18,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_before,4.38,1.335,,False
+2020-11-18,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_before,3.47,1.058,,False
+2020-11-18,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_of,1.76,0.536,,False
+2020-11-18,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_of,1.92,0.585,,False
+2020-11-18,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_of,4.60,1.402,,False
+2020-11-18,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_of,3.70,1.128,,False
+2020-11-18,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_after,2.36,0.719,,False
+2020-11-18,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_after,2.09,0.637,,False
+2020-11-18,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_after,4.55,1.387,,False
+2020-11-18,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_after,3.90,1.189,,False
+2018-11-26,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_before,8.64,2.633,,False
+2018-11-26,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_before,1.62,0.494,,False
+2018-11-26,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_before,5.15,1.570,,False
+2018-11-26,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_before,1.31,0.399,,False
+2018-11-26,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_of,8.54,2.603,,False
+2018-11-26,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_of,-0.16,-0.049,,False
+2018-11-26,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_of,4.87,1.484,,False
+2018-11-26,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_of,1.20,0.366,,False
+2018-11-26,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_after,8.14,2.481,,False
+2018-11-26,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_after,0.63,0.192,,False
+2018-11-26,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_after,4.92,1.500,,False
+2018-11-26,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_after,1.16,0.354,,False
+2018-11-26,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_before,8.64,2.633,,False
+2018-11-26,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_before,1.62,0.494,,False
+2018-11-26,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_before,5.15,1.570,,False
+2018-11-26,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_before,1.31,0.399,,False
+2018-11-26,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_of,8.54,2.603,,False
+2018-11-26,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_of,-0.16,-0.049,,False
+2018-11-26,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_of,4.87,1.484,,False
+2018-11-26,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_of,1.20,0.366,,False
+2018-11-26,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_after,8.14,2.481,,False
+2018-11-26,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_after,0.63,0.192,,False
+2018-11-26,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_after,4.92,1.500,,False
+2018-11-26,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_after,1.16,0.354,,False
+2018-11-20,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_before,43.70,13.320,,False
+2018-11-20,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_before,1.02,0.311,,False
+2018-11-20,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_before,14.30,4.359,,False
+2018-11-20,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_before,23.20,7.071,,False
+2018-11-20,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_of,29.50,8.992,,False
+2018-11-20,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_of,0.98,0.299,,False
+2018-11-20,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_of,5.95,1.814,,False
+2018-11-20,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_of,2.95,0.899,,False
+2018-11-20,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_after,16.40,4.999,,False
+2018-11-20,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_after,1.36,0.415,,False
+2018-11-20,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_after,4.86,1.481,,False
+2018-11-20,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_after,1.35,0.411,,False
+2018-11-20,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_before,43.70,13.320,,False
+2018-11-20,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_before,1.02,0.311,,False
+2018-11-20,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_before,14.30,4.359,,False
+2018-11-20,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_before,23.20,7.071,,False
+2018-11-20,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_of,29.50,8.992,,False
+2018-11-20,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_of,0.98,0.299,,False
+2018-11-20,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_of,5.95,1.814,,False
+2018-11-20,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_of,2.95,0.899,,False
+2018-11-20,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_after,16.40,4.999,,False
+2018-11-20,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_after,1.36,0.415,,False
+2018-11-20,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_after,4.86,1.481,,False
+2018-11-20,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_after,1.35,0.411,,False
+2016-09-28,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_before,4.36,1.329,,False
+2016-09-28,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_before,1.42,0.433,,False
+2016-09-28,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_before,4.50,1.372,,False
+2016-09-28,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_before,10.50,3.200,,False
+2016-09-28,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_of,3.45,1.052,,False
+2016-09-28,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_of,1.47,0.448,,False
+2016-09-28,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_of,3.86,1.177,,False
+2016-09-28,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_of,10.90,3.322,,False
+2016-09-28,naip,08067525,"Goose Ck at Baytown, TX",29.770782,-94.999650,day_after,2.98,0.908,,False
+2016-09-28,naip,08072050,"San Jacinto Rv nr Sheldon, TX",29.876334,-95.093819,day_after,1.16,0.354,,False
+2016-09-28,naip,08075605,"Berry Bayou at Nevada St, Houston, TX",29.656619,-95.229101,day_after,3.66,1.116,,False
+2016-09-28,naip,08075730,"Vince Bayou at Pasadena, TX",29.694674,-95.216323,day_after,12.80,3.901,,False
