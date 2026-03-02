@@ -93,6 +93,10 @@ ATTENTION_WEIGHTS = {
 MC_DROPOUT_SAMPLES = 8
 MC_NOISE_SCALE = 0.05
 
+# Maximum pixels processed per encode() call.
+# At complex64 (8 bytes/el) with 8 amplitudes: 500K × 8 × 8 = 32 MB per chunk.
+ENCODE_CHUNK = 500_000
+
 
 # ---------------------------------------------------------------------------
 # Result container
@@ -449,55 +453,79 @@ class QuantumFeatureEncoder:
         # Apply spectral attention
         a_ndwi, a_mndwi, a_awei = self.attention.apply(ndwi, mndwi, awei)
 
-        # Flatten for vectorised computation
-        ndwi_f = a_ndwi.ravel().astype("float64")
-        mndwi_f = np.nan_to_num(a_mndwi.ravel().astype("float64"), nan=0.0)
-        awei_f = np.nan_to_num(a_awei.ravel().astype("float64"), nan=0.0)
+        # Flatten for vectorised computation (float32 — halves memory vs float64)
+        ndwi_f = a_ndwi.ravel().astype("float32")
+        mndwi_f = np.nan_to_num(a_mndwi.ravel().astype("float32"), nan=0.0)
+        awei_f = np.nan_to_num(a_awei.ravel().astype("float32"), nan=0.0)
 
-        # Map indices to rotation angles θ ∈ [0, π]
-        # High index (water) → small θ → high cos(θ/2) → high |0⟩ amplitude
-        theta_ndwi = (1.0 - ndwi_f) / 2.0 * np.pi
-        theta_mndwi = (1.0 - mndwi_f) / 2.0 * np.pi
-        theta_awei = (1.0 - expit(awei_f)) * np.pi
+        n_pixels = ndwi_f.size
 
-        # Build per-pixel initial 3-qubit state: Ry(θ₁) ⊗ Ry(θ₂) ⊗ Ry(θ₃) |000⟩
-        c1, s1 = np.cos(theta_ndwi / 2), np.sin(theta_ndwi / 2)
-        c2, s2 = np.cos(theta_mndwi / 2), np.sin(theta_mndwi / 2)
-        c3, s3 = np.cos(theta_awei / 2), np.sin(theta_awei / 2)
+        # Pre-allocate output arrays
+        water_prob_flat = np.empty(n_pixels, dtype="float32")
+        confidence_flat = np.empty(n_pixels, dtype="float32")
 
-        # 8-element state vector via tensor product of 3 single-qubit states
-        psi_init = np.stack([
-            c1 * c2 * c3,   # |000⟩ — deep water
-            c1 * c2 * s3,   # |001⟩ — shallow water
-            c1 * s2 * c3,   # |010⟩ — wet vegetation
-            c1 * s2 * s3,   # |011⟩ — flood shadow
-            s1 * c2 * c3,   # |100⟩ — dry vegetation
-            s1 * c2 * s3,   # |101⟩ — bare soil
-            s1 * s2 * c3,   # |110⟩ — impervious
-            s1 * s2 * s3,   # |111⟩ — cloud/noise
-        ], axis=-1).astype(complex)  # shape: (n_pixels, 8)
+        # Circuit unitary in complex64 (8×8 matrix — trivially small)
+        U = self._circuit_unitary.astype(np.complex64)
 
-        # Apply AWEI phase rotation on water states for constructive interference
-        phase = np.exp(1j * theta_awei)
-        psi_init[:, 0] *= phase   # deep water
-        psi_init[:, 1] *= phase   # shallow water
+        # Process in memory-bounded chunks.
+        # complex64 (8 bytes) × 8 amplitudes × ENCODE_CHUNK pixels ≈
+        # ENCODE_CHUNK × 64 bytes for psi_init/psi_final each.
+        # At 500K pixels → 32 MB peak per chunk instead of ~500 MB for the full grid.
+        for start in range(0, n_pixels, ENCODE_CHUNK):
+            end = min(start + ENCODE_CHUNK, n_pixels)
+            sl = slice(start, end)
 
-        # Apply the full variational circuit unitary
-        psi_final = (self._circuit_unitary @ psi_init.T).T  # (n_pixels, 8)
+            # Map indices to rotation angles θ ∈ [0, π] (keep in float64 for trig accuracy)
+            nd = ndwi_f[sl].astype("float64")
+            mn = mndwi_f[sl].astype("float64")
+            aw = awei_f[sl].astype("float64")
 
-        # Born rule → 8-class probability distribution
-        probs = np.abs(psi_final) ** 2
+            theta_ndwi  = (1.0 - nd) / 2.0 * np.pi
+            theta_mndwi = (1.0 - mn) / 2.0 * np.pi
+            theta_awei  = (1.0 - expit(aw)) * np.pi
 
-        # Normalise (numerical safety)
-        prob_sum = probs.sum(axis=1, keepdims=True)
-        prob_sum = np.where(prob_sum > 0, prob_sum, 1.0)
-        probs /= prob_sum
+            # Build per-pixel initial 3-qubit state: Ry(θ₁) ⊗ Ry(θ₂) ⊗ Ry(θ₃) |000⟩
+            c1, s1 = np.cos(theta_ndwi  / 2), np.sin(theta_ndwi  / 2)
+            c2, s2 = np.cos(theta_mndwi / 2), np.sin(theta_mndwi / 2)
+            c3, s3 = np.cos(theta_awei  / 2), np.sin(theta_awei  / 2)
+
+            # 8-element state vector via tensor product (complex64 — halves memory)
+            psi_chunk = np.stack([
+                c1 * c2 * c3,   # |000⟩ — deep water
+                c1 * c2 * s3,   # |001⟩ — shallow water
+                c1 * s2 * c3,   # |010⟩ — wet vegetation
+                c1 * s2 * s3,   # |011⟩ — flood shadow
+                s1 * c2 * c3,   # |100⟩ — dry vegetation
+                s1 * c2 * s3,   # |101⟩ — bare soil
+                s1 * s2 * c3,   # |110⟩ — impervious
+                s1 * s2 * s3,   # |111⟩ — cloud/noise
+            ], axis=-1).astype(np.complex64)  # shape: (chunk, 8)
+
+            # Apply AWEI phase rotation on water states for constructive interference
+            phase = np.exp(1j * theta_awei).astype(np.complex64)
+            psi_chunk[:, 0] *= phase   # deep water
+            psi_chunk[:, 1] *= phase   # shallow water
+
+            # Apply the full variational circuit unitary
+            psi_final = (U @ psi_chunk.T).T  # (chunk, 8)
+
+            # Born rule → 8-class probability distribution
+            probs = np.abs(psi_final) ** 2
+
+            # Normalise (numerical safety)
+            prob_sum = probs.sum(axis=1, keepdims=True)
+            prob_sum = np.where(prob_sum > 0, prob_sum, 1.0)
+            probs /= prob_sum
+
+            # Store chunk results
+            water_prob_flat[sl] = (probs[:, 0] + probs[:, 1]).astype("float32")
+            confidence_flat[sl] = probs.max(axis=1).astype("float32")
 
         # Water probability = P(|000⟩) + P(|001⟩)  (deep + shallow)
-        water_prob = (probs[:, 0] + probs[:, 1]).reshape(shape).astype("float32")
+        water_prob = water_prob_flat.reshape(shape)
 
         # Confidence = max single-class probability
-        confidence = probs.max(axis=1).reshape(shape).astype("float32")
+        confidence = confidence_flat.reshape(shape)
 
         return water_prob, confidence
 
