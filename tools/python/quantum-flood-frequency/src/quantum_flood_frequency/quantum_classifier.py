@@ -52,16 +52,19 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, cast
 
 import numpy as np
 from scipy.special import expit  # sigmoid
+from scipy.ndimage import binary_opening, binary_closing, label
 from sklearn.svm import SVC
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import RidgeClassifier
 from sklearn.preprocessing import StandardScaler
 
 from .preprocessing import AlignedStack
+from .sar_processor import SARFeatures
+from .terrain import TerrainFeatures
 
 logger = logging.getLogger("geoscripthub.quantum_flood_frequency.quantum_classifier")
 
@@ -182,6 +185,118 @@ def compute_bsi(
     Helps distinguish bare soil from shallow water.
     """
     return _safe_ratio((swir1 + red), (nir + blue))
+
+
+def compute_ndbi(nir: np.ndarray, swir1: np.ndarray) -> np.ndarray:
+    """Normalised Difference Built-up Index = (SWIR1 − NIR) / (SWIR1 + NIR).
+
+    v3.0: Positive values indicate built-up/impervious surfaces.
+    Used to mask buildings that would otherwise be misclassified as water.
+
+    Zha et al., "Use of normalized difference built-up index in
+    automatically mapping urban areas from TM imagery", IJRS 24(3), 2003.
+    """
+    return _safe_ratio(swir1, nir)
+
+
+def compute_wri(
+    green: np.ndarray,
+    red: np.ndarray,
+    nir: np.ndarray,
+    swir1: np.ndarray,
+) -> np.ndarray:
+    """Water Ratio Index = (Green + Red) / (NIR + SWIR1).
+
+    v3.0: WRI > 1.0 indicates water. More robust than NDWI for
+    separating water from dark impervious surfaces.
+
+    Shen & Li, "Water body extraction from Landsat ETM+ imagery
+    using spectral gradient difference method", JARS 4, 2010.
+    """
+    denom = nir + swir1
+    with np.errstate(divide="ignore", invalid="ignore"):
+        result = np.where(denom != 0, (green + red) / denom, 0.0)
+    return result.astype("float32")
+
+
+# ---------------------------------------------------------------------------
+# Post-classification morphological refinement (v3.0)
+# ---------------------------------------------------------------------------
+
+# Morphological structuring elements
+# Disc of radius 2 (5×5 approximate) — removes isolated clusters < ~25 px
+MORPH_STRUCT_SMALL = np.array([
+    [0, 1, 1, 1, 0],
+    [1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1],
+    [0, 1, 1, 1, 0],
+], dtype=bool)
+
+# Minimum connected-component size for water body (in pixels)
+# At 1 m resolution, 100 px ≈ 100 m² — a small pond
+# At 10 m resolution, 100 px ≈ 10,000 m² — a larger water body
+MIN_WATER_CLUSTER_PX = 50
+
+# Urban suppression constants
+NDBI_URBAN_THRESHOLD = 0.0   # NDBI > 0 → built-up area
+URBAN_SUPPRESSION_FACTOR = 0.15  # multiply water_prob by this in urban areas
+
+# SAR confidence boost/suppress
+SAR_WATER_BOOST = 1.4         # boost water prob where SAR confirms water
+SAR_BUILDING_SUPPRESS = 0.10  # suppress water prob where SAR detects building
+
+
+def morphological_refinement(
+    water_binary: np.ndarray,
+    water_prob: np.ndarray,
+    min_cluster_px: int = MIN_WATER_CLUSTER_PX,
+    structure: Optional[np.ndarray] = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Remove false-positive water clusters smaller than threshold.
+
+    Buildings appear as discrete, rectangular ~25–100 m² patches.
+    Water bodies are contiguous and typically > 100 m². This filter
+    opens the binary mask (removes small clusters) and then removes
+    connected components below the minimum size threshold.
+
+    Args:
+        water_binary: 2-D boolean water mask.
+        water_prob: 2-D float water probability.
+        min_cluster_px: Minimum cluster size to retain.
+        structure: Morphological structuring element (default: 5×5 disc).
+
+    Returns:
+        refined_binary: Cleaned binary mask.
+        refined_prob: Probability zeroed where clusters removed.
+    """
+    if structure is None:
+        structure = MORPH_STRUCT_SMALL
+
+    # Step 1: Morphological opening (erosion then dilation)
+    opened = binary_opening(water_binary, structure=structure)
+
+    # Step 2: Connected-component labelling — remove small clusters
+    label_result = cast(tuple[np.ndarray, int], label(opened))
+    labelled = label_result[0]
+    n_features = int(label_result[1])
+    refined = np.zeros_like(water_binary)
+
+    if n_features > 0:
+        for lbl_id in range(1, n_features + 1):
+            cluster = labelled == lbl_id
+            if cluster.sum() >= min_cluster_px:
+                refined[cluster] = True
+
+    # Step 3: Smooth edges with closing (dilation then erosion)
+    refined = binary_closing(refined, structure=structure)
+
+    # Suppress probability where clusters were removed
+    removed = water_binary & ~refined.astype(bool)
+    refined_prob = water_prob.copy()
+    refined_prob[removed] = refined_prob[removed] * 0.1
+
+    return refined, refined_prob
 
 
 # ---------------------------------------------------------------------------
@@ -510,11 +625,20 @@ class QuantumKernelSVM:
     ) -> np.ndarray:
         """Train on pseudo-labels from NDWI thresholds, then predict.
 
+        Args:
+            features: Feature matrix (n_pixels, n_features).
+            ndwi: NDWI array OR pre-computed pseudo-labels (int).
+
         Returns:
             Water probability array (n_pixels,) in [0, 1].
         """
         n_pixels = features.shape[0]
-        labels = (ndwi > NDWI_WATER_THRESHOLD).astype(int)
+
+        # Accept either raw NDWI or pre-computed pseudo-labels
+        if ndwi.dtype in (np.int32, np.int64, int):
+            labels = ndwi.ravel().astype(int)
+        else:
+            labels = (ndwi > NDWI_WATER_THRESHOLD).astype(int)
 
         rng = np.random.default_rng(42)
         idx = rng.choice(n_pixels, size=min(self.n_samples, n_pixels), replace=False)
@@ -586,9 +710,19 @@ class SpectralGBClassifier:
         features: np.ndarray,
         ndwi: np.ndarray,
     ) -> np.ndarray:
-        """Train on pseudo-labels and predict water probability."""
+        """Train on pseudo-labels and predict water probability.
+
+        Args:
+            features: Feature matrix (n_pixels, n_features).
+            ndwi: NDWI array OR pre-computed pseudo-labels (int).
+        """
         n_pixels = features.shape[0]
-        labels = (ndwi > NDWI_WATER_THRESHOLD).astype(int)
+
+        # Accept either raw NDWI or pre-computed pseudo-labels
+        if ndwi.dtype in (np.int32, np.int64, int):
+            labels = ndwi.ravel().astype(int)
+        else:
+            labels = (ndwi > NDWI_WATER_THRESHOLD).astype(int)
 
         rng = np.random.default_rng(123)
         idx = rng.choice(n_pixels, size=min(self.n_samples, n_pixels), replace=False)
@@ -597,8 +731,8 @@ class SpectralGBClassifier:
         y_train = labels[idx]
 
         if len(np.unique(y_train)) < 2:
-            logger.warning("GB: only one class in training set, falling back to NDWI")
-            return (ndwi > NDWI_WATER_THRESHOLD).astype("float32")
+            logger.warning("GB: only one class in training set, falling back to pseudo-labels")
+            return labels.astype("float32")
 
         self._gb.fit(X_train, y_train)
         self._fitted = True
@@ -753,17 +887,18 @@ def bayesian_model_average(
 # ---------------------------------------------------------------------------
 
 class QuantumHybridClassifier:
-    """Orchestrates the full QIEC v2.0 pipeline for water classification.
+    """Orchestrates the full QIEC v3.0 pipeline for water classification.
 
     Runs QFE (3-qubit) → QK-SVM → GBSIE → Meta-Learner fusion
-    for each observation.
+    → SAR/terrain/morphological refinement for each observation.
 
-    v2.0 enhancements:
-    - 3-qubit QFE with spectral attention
-    - Monte Carlo uncertainty quantification
-    - Meta-learner stacking (Ridge) instead of fixed BMA
-    - NDVI and BSI as additional features
-    - Per-sensor adaptive attention
+    v3.0 enhancements over v2.0:
+    - SAR (Sentinel-1) features: VV/VH backscatter, SAR water index
+    - DEM/terrain constraints: HAND, slope, flood susceptibility
+    - NDBI urban mask to suppress building false positives
+    - Morphological refinement to remove isolated false-positive clusters
+    - WRI (Water Ratio Index) for additional spectral discrimination
+    - Multi-source pseudo-labels (SAR + spectral + terrain consensus)
 
     Parameters
     ----------
@@ -786,12 +921,14 @@ class QuantumHybridClassifier:
         use_uncertainty: bool = True,
         svm_max_samples: int = 5000,
         gb_n_estimators: int = 200,
+        min_water_cluster_px: Optional[int] = None,
     ) -> None:
         self.use_quantum_svm = use_quantum_svm
         self.use_meta_learner = use_meta_learner
         self.use_uncertainty = use_uncertainty
         self.svm_max_samples = svm_max_samples
         self.gb_n_estimators = gb_n_estimators
+        self.min_water_cluster_px = min_water_cluster_px  # None = auto-scale
 
         # Lazy init per sensor (attention weights differ)
         self._qfe_cache: dict[str, QuantumFeatureEncoder] = {}
@@ -799,21 +936,53 @@ class QuantumHybridClassifier:
         self._gb = SpectralGBClassifier(n_estimators=gb_n_estimators)
         self._meta = EnsembleMetaLearner() if use_meta_learner else None
 
+        # v3.0: static context layers (SAR + terrain)
+        self._sar_features: Optional[SARFeatures] = None
+        self._terrain_features: Optional[TerrainFeatures] = None
+
     def _get_qfe(self, sensor: str) -> QuantumFeatureEncoder:
         """Get or create a sensor-specific QFE (with attention weights)."""
         if sensor not in self._qfe_cache:
             self._qfe_cache[sensor] = QuantumFeatureEncoder(sensor=sensor)
         return self._qfe_cache[sensor]
 
-    def classify_stack(self, stack: AlignedStack) -> list[ClassificationResult]:
+    def classify_stack(
+        self,
+        stack: AlignedStack,
+        sar_features: Optional[SARFeatures] = None,
+        terrain_features: Optional[TerrainFeatures] = None,
+    ) -> list[ClassificationResult]:
         """Classify every observation in the aligned stack.
 
         Args:
-            stack: Preprocessed AlignedStack at 10 m resolution.
+            stack: Preprocessed AlignedStack at target resolution.
+            sar_features: SAR-derived feature layers (optional, v3.0).
+            terrain_features: DEM-derived terrain constraints (optional, v3.0).
 
         Returns:
             List of ClassificationResult, one per observation.
         """
+        # Store static context for use in _classify_single
+        self._sar_features = sar_features
+        self._terrain_features = terrain_features
+
+        if sar_features is not None:
+            logger.info(
+                "SAR context active — %d SAR observations, "
+                "water_px=%d, building_px=%d",
+                sar_features.n_observations,
+                int(sar_features.water_mask_sar.sum()),
+                int(sar_features.building_mask_sar.sum()),
+            )
+        if terrain_features is not None:
+            logger.info(
+                "Terrain context active — HAND range [%.1f–%.1f] m, "
+                "floodable_px=%d",
+                float(np.nanmin(terrain_features.hand)),
+                float(np.nanmax(terrain_features.hand)),
+                int(terrain_features.terrain_mask.sum()),
+            )
+
         results: list[ClassificationResult] = []
 
         for i, obs in enumerate(stack.observations):
@@ -829,7 +998,21 @@ class QuantumHybridClassifier:
         return results
 
     def _classify_single(self, obs: dict) -> ClassificationResult:
-        """Run the full QIEC v2.0 pipeline on one observation."""
+        """Run the full QIEC v3.0 pipeline on one observation.
+
+        v3.0 pipeline:
+        1. Compute spectral indices (NDWI, MNDWI, AWEI, NDVI, BSI, NDBI, WRI)
+        2. Quantum-inspired feature encoding (3-qubit)
+        3. Build enhanced feature matrix (spectral + SAR + terrain)
+        4. Generate multi-source pseudo-labels
+        5. QK-SVM and GB ensemble classification
+        6. Meta-learner fusion
+        7. Post-classification refinement:
+           a. Urban suppression (NDBI + SAR building mask)
+           b. Terrain constraint (HAND threshold)
+           c. SAR water confirmation (boost where SAR agrees)
+           d. Morphological filtering (remove small false-positive clusters)
+        """
         green = obs["green"]
         nir = obs["nir"]
         red = obs["red"]
@@ -842,7 +1025,7 @@ class QuantumHybridClassifier:
         shape = green.shape
         has_swir = not np.all(np.isnan(swir1))
 
-        # --- Step 1: Compute spectral indices (cached per obs) ---
+        # --- Step 1: Compute spectral indices ---
         ndwi = compute_ndwi(green, nir)
 
         if has_swir:
@@ -850,11 +1033,15 @@ class QuantumHybridClassifier:
             awei_sh = compute_awei_sh(blue, green, nir, swir1, swir2)
             ndvi = compute_ndvi(red, nir)
             bsi = compute_bsi(blue, red, nir, swir1)
+            ndbi = compute_ndbi(nir, swir1)
+            wri = compute_wri(green, red, nir, swir1)
         else:
             mndwi = ndwi.copy()
             awei_sh = np.zeros_like(ndwi)
             ndvi = compute_ndvi(red, nir)
             bsi = np.zeros_like(ndwi)
+            ndbi = np.zeros_like(ndwi)
+            wri = np.zeros_like(ndwi)
 
         # --- Step 2: Quantum-Inspired Feature Encoding (3-qubit) ---
         qfe = self._get_qfe(source)
@@ -868,35 +1055,77 @@ class QuantumHybridClassifier:
             uncertainty = np.zeros(shape, dtype="float32")
             entropy = np.zeros(shape, dtype="float32")
 
-        # --- Step 3: Build enhanced feature matrix ---
-        feature_bands = [green, nir, red, ndwi, mndwi, ndvi]
+        # --- Step 3: Build enhanced feature matrix (v3.0) ---
+        feature_bands: list[np.ndarray] = [green, nir, red, ndwi, mndwi, ndvi]
         if has_swir:
-            feature_bands.extend([swir1, swir2, awei_sh, bsi])
+            feature_bands.extend([swir1, swir2, awei_sh, bsi, ndbi, wri])
+
+        # v3.0: Append SAR features if available
+        sar = self._sar_features
+        if sar is not None and sar.valid_mask.any():
+            feature_bands.extend([
+                sar.vv_db,
+                sar.vh_db,
+                sar.vh_vv_ratio,
+                sar.sar_water_index,
+            ])
+
+        # v3.0: Append terrain features if available
+        terrain = self._terrain_features
+        if terrain is not None and terrain.valid_mask.any():
+            feature_bands.extend([
+                terrain.hand,
+                terrain.slope,
+                terrain.flood_susceptibility,
+            ])
 
         features = np.stack(
             [b.ravel() for b in feature_bands], axis=1
         ).astype("float32")
         features = np.nan_to_num(features, nan=0.0)
-        ndwi_flat = ndwi.ravel()
 
-        # --- Step 4: QK-SVM ---
+        # --- Step 4: Generate multi-source pseudo-labels (v3.0) ---
+        # Instead of just NDWI > 0, use multi-source consensus
+        ndwi_flat = ndwi.ravel()
+        pseudo_water = ndwi_flat > NDWI_WATER_THRESHOLD
+
+        if sar is not None and sar.valid_mask.any():
+            # SAR evidence: suppress pseudo-water where SAR sees buildings
+            sar_building_flat = sar.building_mask_sar.ravel()
+            sar_water_flat = sar.water_mask_sar.ravel()
+            pseudo_water = pseudo_water & ~sar_building_flat
+            # Also add SAR-confirmed water that spectral might miss
+            pseudo_water = pseudo_water | sar_water_flat
+
+        if terrain is not None and terrain.valid_mask.any():
+            # Terrain evidence: suppress pseudo-water on high ground
+            hand_flat = terrain.hand.ravel()
+            pseudo_water = pseudo_water & (hand_flat < 30.0)
+
+        if has_swir:
+            # NDBI evidence: suppress pseudo-water in urban areas
+            ndbi_flat = ndbi.ravel()
+            pseudo_water = pseudo_water & (ndbi_flat < 0.1)
+
+        pseudo_labels = pseudo_water.astype(int)
+
+        # --- Step 5: QK-SVM ---
         if self._qk_svm is not None:
-            svm_prob_flat = self._qk_svm.fit_predict(features, ndwi_flat)
+            svm_prob_flat = self._qk_svm.fit_predict(features, pseudo_labels)
             svm_prob = svm_prob_flat.reshape(shape)
         else:
             svm_prob = q_prob.copy()
 
-        # --- Step 5: Gradient-Boosted Ensemble (v2.0: with NDVI, BSI) ---
-        gb_prob_flat = self._gb.fit_predict(features, ndwi_flat)
+        # --- Step 6: Gradient-Boosted Ensemble (v3.0: expanded features) ---
+        gb_prob_flat = self._gb.fit_predict(features, pseudo_labels)
         gb_prob = gb_prob_flat.reshape(shape)
 
-        # --- Step 6: Fusion — Meta-Learner or Bayesian ---
+        # --- Step 7: Fusion — Meta-Learner or Bayesian ---
         if self._meta is not None:
             fused_prob = self._meta.fit_fuse(
                 q_prob, svm_prob, gb_prob, q_conf, ndwi
             )
         else:
-            # Per-sensor Bayesian priors (fallback)
             if source == "landsat":
                 priors = (0.35, 0.35, 0.30)
             elif source == "sentinel2":
@@ -911,13 +1140,86 @@ class QuantumHybridClassifier:
                 prior_gb=priors[2],
             )
 
-        # Apply cloud mask
-        fused_prob = np.where(cloud_mask, fused_prob, np.nan)
+        # --- Step 8: Post-classification refinement (v3.0) ---
+
+        # 8a. Urban suppression via NDBI
+        if has_swir:
+            urban_mask = ndbi > NDBI_URBAN_THRESHOLD
+            fused_prob = np.where(
+                urban_mask,
+                fused_prob * URBAN_SUPPRESSION_FACTOR,
+                fused_prob,
+            )
+            logger.debug(
+                "Urban suppression: %d px suppressed (NDBI > %.1f)",
+                int(urban_mask.sum()), NDBI_URBAN_THRESHOLD,
+            )
+
+        # 8b. SAR building suppression + water confirmation
+        if sar is not None and sar.valid_mask.any():
+            # Suppress water where SAR detects buildings (high VV backscatter)
+            fused_prob = np.where(
+                sar.building_mask_sar,
+                fused_prob * SAR_BUILDING_SUPPRESS,
+                fused_prob,
+            )
+            # Boost water where SAR confirms (low VV backscatter)
+            fused_prob = np.where(
+                sar.water_mask_sar & (fused_prob > 0.2),
+                np.minimum(fused_prob * SAR_WATER_BOOST, 1.0),
+                fused_prob,
+            )
+            logger.debug(
+                "SAR refinement: %d px suppressed (buildings), %d px boosted (water)",
+                int(sar.building_mask_sar.sum()),
+                int((sar.water_mask_sar & (fused_prob > 0.2)).sum()),
+            )
+
+        # 8c. Terrain constraint via HAND
+        if terrain is not None and terrain.valid_mask.any():
+            # Scale probability by flood susceptibility (sigmoid of HAND)
+            fused_prob = fused_prob * terrain.flood_susceptibility
+            # Hard mask: HAND > 30 m → impossible to flood
+            fused_prob = np.where(terrain.terrain_mask, fused_prob, 0.0)
+            logger.debug(
+                "Terrain constraint: %d px masked (HAND > threshold)",
+                int((~terrain.terrain_mask).sum()),
+            )
+
+        # 8d. Morphological refinement — remove building-sized clusters
+        # Only apply on grids large enough where building confusion is real,
+        # and only when SAR or terrain data provides context for discrimination.
+        # Without SAR/terrain, morphological filtering can hurt accuracy by
+        # removing legitimate small water bodies.
+        fused_prob = np.clip(fused_prob, 0.0, 1.0)
         water_binary = fused_prob > 0.5
 
+        has_context = (
+            (sar is not None and sar.valid_mask.any())
+            or (terrain is not None and terrain.valid_mask.any())
+        )
+        apply_morph = has_context and shape[0] >= 100 and shape[1] >= 100
+
+        if apply_morph:
+            min_cluster = self.min_water_cluster_px
+            if min_cluster is None:
+                min_cluster = max(3, min(200, int(shape[0] * shape[1] * 0.002)))
+
+            refined_binary, refined_prob = morphological_refinement(
+                water_binary, fused_prob,
+                min_cluster_px=min_cluster,
+            )
+        else:
+            refined_binary = water_binary
+            refined_prob = fused_prob
+
+        # Apply cloud mask last
+        refined_prob = np.where(cloud_mask, refined_prob, np.nan)
+        refined_binary = np.where(cloud_mask, refined_binary, False)
+
         return ClassificationResult(
-            water_probability=fused_prob,
-            water_binary=water_binary,
+            water_probability=refined_prob.astype("float32"),
+            water_binary=refined_binary,
             ndwi=ndwi,
             mndwi=mndwi,
             awei_sh=awei_sh,

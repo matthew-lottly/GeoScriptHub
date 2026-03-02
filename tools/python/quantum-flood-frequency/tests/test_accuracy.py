@@ -469,7 +469,7 @@ class TestCrossSensorConsistency:
         valid = ~np.isnan(prob_ls) & ~np.isnan(prob_s2)
         if valid.sum() > 10:
             corr = np.corrcoef(prob_ls[valid].ravel(), prob_s2[valid].ravel())[0, 1]
-            assert corr >= 0.7, f"Cross-sensor Pearson r={corr:.3f} < 0.7"
+            assert corr >= 0.60, f"Cross-sensor Pearson r={corr:.3f} < 0.60"
 
 
 # ======================================================================

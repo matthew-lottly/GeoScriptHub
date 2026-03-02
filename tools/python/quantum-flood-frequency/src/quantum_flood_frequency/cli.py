@@ -22,18 +22,20 @@ import time
 from pathlib import Path
 
 import click
+import numpy as np
 
 logger = logging.getLogger("geoscripthub.quantum_flood_frequency.cli")
 
 
 @click.group()
-@click.version_option(version="2.0.0", prog_name="quantum-flood-frequency")
+@click.version_option(version="3.0.0", prog_name="quantum-flood-frequency")
 def main() -> None:
-    """Pseudo-Quantum Hybrid AI Flood Frequency Mapper v2.0.
+    """Pseudo-Quantum Hybrid AI Flood Frequency Mapper v3.0.
 
-    Fuses Landsat, Sentinel-2 and NAIP imagery with quantum-inspired
-    classification and super-resolution upsampling to map flood
-    inundation frequency at 10 m resolution in Houston, TX.
+    Fuses Landsat, Sentinel-2, NAIP, Sentinel-1 SAR, and Copernicus DEM
+    imagery with quantum-inspired classification, SAR discrimination,
+    terrain constraints, and super-resolution upsampling to map flood
+    inundation frequency at 1 m resolution in Houston, TX.
     """
 
 
@@ -96,9 +98,21 @@ def main() -> None:
 @click.option(
     "--resolution",
     type=int,
-    default=10,
+    default=1,
     show_default=True,
-    help="Target analysis resolution in metres (10=super-resolve, 30=legacy).",
+    help="Target analysis resolution in metres (1=NAIP native, 10=super-resolve, 30=legacy).",
+)
+@click.option(
+    "--use-sar/--no-sar",
+    default=True,
+    show_default=True,
+    help="Use Sentinel-1 SAR for building/water discrimination.",
+)
+@click.option(
+    "--use-terrain/--no-terrain",
+    default=True,
+    show_default=True,
+    help="Use Copernicus DEM for terrain-based flood constraint.",
 )
 @click.option(
     "--sr-method",
@@ -129,20 +143,23 @@ def run(
     max_cloud: int,
     quantum_svm: bool,
     resolution: int,
+    use_sar: bool,
+    use_terrain: bool,
     sr_method: str,
     meta_learner: bool,
     verbose: bool,
 ) -> None:
     """Run the full flood frequency analysis pipeline.
 
-    Steps:
+    v3.0 Steps:
       1. Build AOI around Houston, TX
-      2. Acquire Landsat, Sentinel-2, NAIP imagery from Planetary Computer
-      3. Super-resolve & align to 10 m grid (sample UP, not down)
-      4. Classify water via 3-qubit Quantum-Inspired Ensemble (QIEC v2.0)
-      5. Aggregate into flood frequency surface
-      6. Fetch FEMA flood zones for comparison
-      7. Generate maps, rasters, and interactive viewer
+      2. Acquire Landsat, Sentinel-2, NAIP, Sentinel-1 SAR, DEM imagery
+      3. Super-resolve & align to target resolution (default 1 m)
+      4. Process SAR composite + terrain HAND features
+      5. Classify water via 3-qubit QIEC v3.0 + SAR + terrain
+      6. Aggregate into flood frequency surface
+      7. Fetch FEMA flood zones for comparison
+      8. Generate maps, rasters, and interactive viewer
     """
     # --- Logging setup ---
     handler = logging.StreamHandler(sys.stdout)
@@ -163,7 +180,11 @@ def run(
         fg="cyan", bold=True,
     )
     click.secho(
-        "║   Pseudo-Quantum Hybrid AI Flood Frequency Mapper  v2.0   ║",
+        "║   Pseudo-Quantum Hybrid AI Flood Frequency Mapper  v3.0   ║",
+        fg="cyan", bold=True,
+    )
+    click.secho(
+        "║   SAR + DEM + Quantum-Inspired Ensemble Classification    ║",
         fg="cyan", bold=True,
     )
     click.secho(
@@ -202,7 +223,8 @@ def run(
     click.echo(f"  AOI: {aoi.description}")
 
     # --- Step 2: Imagery acquisition ---
-    click.secho("\n▶ Step 2/7: Acquiring multi-sensor imagery …", fg="yellow", bold=True)
+    n_steps = 8
+    click.secho(f"\n▶ Step 2/{n_steps}: Acquiring multi-sensor imagery …", fg="yellow", bold=True)
     acquisition = MultiSensorAcquisition(
         aoi=aoi,
         start_date=start_date,
@@ -211,10 +233,14 @@ def run(
     )
     sensor_stack = acquisition.fetch_all()
     click.echo(f"  {sensor_stack}")
+    if use_sar and sensor_stack.sentinel1 is not None:
+        click.echo(f"  Sentinel-1 SAR: {sensor_stack.sentinel1_count} scenes")
+    if use_terrain and sensor_stack.dem is not None:
+        click.echo(f"  Copernicus DEM: loaded")
 
-    # --- Step 3: Preprocessing (super-resolution) ---
+    # --- Step 3: Preprocessing (super-resolution + alignment) ---
     click.secho(
-        f"\n▶ Step 3/7: Super-resolve & align to {resolution} m grid …",
+        f"\n▶ Step 3/{n_steps}: Super-resolve & align to {resolution} m grid …",
         fg="yellow", bold=True,
     )
     preprocessor = ImagePreprocessor(
@@ -226,20 +252,53 @@ def run(
         landsat=sensor_stack.landsat,
         sentinel2=sensor_stack.sentinel2,
         naip=sensor_stack.naip,
+        sentinel1=sensor_stack.sentinel1 if use_sar else None,
+        dem=sensor_stack.dem if use_terrain else None,
     )
     click.echo(f"  {aligned}")
 
-    # --- Step 4: Quantum-hybrid classification (v2.0: 3-qubit) ---
-    click.secho("\n▶ Step 4/7: 3-Qubit Quantum-Inspired Ensemble Classification …", fg="yellow", bold=True)
+    # --- Step 4: SAR + terrain context ---
+    click.secho(
+        f"\n▶ Step 4/{n_steps}: Processing SAR & terrain context layers …",
+        fg="yellow", bold=True,
+    )
+    sar_features = aligned.sar_features
+    terrain_features = aligned.terrain_features
+    if sar_features is not None:
+        click.echo(
+            f"  SAR: {sar_features.n_observations} observations, "
+            f"water_px={int(sar_features.water_mask_sar.sum())}, "
+            f"building_px={int(sar_features.building_mask_sar.sum())}"
+        )
+    else:
+        click.echo("  SAR: not available (classification will use spectral-only)")
+    if terrain_features is not None:
+        click.echo(
+            f"  Terrain: HAND [{np.nanmin(terrain_features.hand):.1f}–"
+            f"{np.nanmax(terrain_features.hand):.1f}] m, "
+            f"floodable_px={int(terrain_features.terrain_mask.sum())}"
+        )
+    else:
+        click.echo("  Terrain: not available (no HAND constraint)")
+
+    # --- Step 5: Quantum-hybrid classification (v3.0: SAR + terrain) ---
+    click.secho(
+        f"\n▶ Step 5/{n_steps}: 3-Qubit QIEC v3.0 + SAR + Terrain Classification …",
+        fg="yellow", bold=True,
+    )
     classifier = QuantumHybridClassifier(
         use_quantum_svm=quantum_svm,
         use_meta_learner=meta_learner,
     )
-    classifications = classifier.classify_stack(aligned)
+    classifications = classifier.classify_stack(
+        aligned,
+        sar_features=sar_features,
+        terrain_features=terrain_features,
+    )
     click.echo(f"  Classified {len(classifications)} observations")
 
-    # --- Step 5: Flood frequency ---
-    click.secho("\n▶ Step 5/7: Computing flood frequency surface …", fg="yellow", bold=True)
+    # --- Step 6: Flood frequency ---
+    click.secho(f"\n▶ Step 6/{n_steps}: Computing flood frequency surface …", fg="yellow", bold=True)
     engine = FloodFrequencyEngine(stack=aligned)
     freq_result = engine.compute(classifications)
     click.echo(f"  {freq_result}")
@@ -249,8 +308,8 @@ def run(
     engine.save_zone_raster(freq_result, output / "flood_zones.tif")
     engine.save_confidence_raster(freq_result, output / "confidence_bounds.tif")
 
-    # --- Step 6: FEMA overlay ---
-    click.secho("\n▶ Step 6/7: Fetching FEMA flood zone data …", fg="yellow", bold=True)
+    # --- Step 7: FEMA overlay ---
+    click.secho(f"\n▶ Step 7/{n_steps}: Fetching FEMA flood zone data …", fg="yellow", bold=True)
     fema = FEMAFloodZones(aoi=aoi)
     try:
         fema_gdf = fema.fetch()
@@ -271,8 +330,8 @@ def run(
     except Exception as exc:
         click.secho(f"  FEMA data unavailable: {exc}", fg="red")
 
-    # --- Step 7: Visualisation ---
-    click.secho("\n▶ Step 7/7: Generating maps and visualisations …", fg="yellow", bold=True)
+    # --- Step 8: Visualisation ---
+    click.secho(f"\n▶ Step 8/{n_steps}: Generating maps and visualisations …", fg="yellow", bold=True)
     mapper = FloodMapper(
         result=freq_result,
         aoi=aoi,

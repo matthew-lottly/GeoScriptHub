@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quantum Flood Frequency Mapper v3.0 — Pipeline Architecture</title>
+  <style>
+    :root {
+      --bg:        #0d1117;
+      --panel:     #161b22;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --accent1:   #58a6ff;   /* blue  */
+      --accent2:   #3fb950;   /* green */
+      --accent3:   #d29922;   /* amber */
+      --accent4:   #f85149;   /* red   */
+      --accent5:   #a371f7;   /* purple*/
+      --accent6:   #39d353;   /* bright green */
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      padding: 32px 24px 64px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+      color: var(--accent1);
+    }
+    header p {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    /* ── Layout: 8 vertical stages ──────────────────────────────────── */
+    .pipeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* Connector arrow between stages */
+    .connector {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 36px;
+      color: var(--muted);
+      font-size: 1.4rem;
+      position: relative;
+    }
+    .connector::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 2px;
+      height: 100%;
+      background: var(--border);
+    }
+    .connector span {
+      background: var(--bg);
+      padding: 0 6px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Stage wrapper */
+    .stage {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+
+    .stage-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .stage-number {
+      min-width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .75rem;
+      font-weight: 700;
+    }
+    .stage-title {
+      font-size: .95rem;
+      font-weight: 600;
+    }
+    .stage-badge {
+      margin-left: auto;
+      font-size: .7rem;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      letter-spacing: .04em;
+    }
+
+    /* Card grid inside a stage */
+    .cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 16px 20px;
+    }
+
+    .card {
+      flex: 1 1 160px;
+      min-width: 140px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      background: var(--bg);
+      position: relative;
+    }
+    .card-icon {
+      font-size: 1.3rem;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .card-title {
+      font-size: .82rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .card-meta {
+      font-size: .72rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .card-tag {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: .65rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* NEW badge for v3.0 additions */
+    .new-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: .6rem;
+      font-weight: 700;
+      background: var(--accent4);
+      color: #fff;
+      padding: 1px 5px;
+      border-radius: 4px;
+      letter-spacing: .04em;
+    }
+
+    /* ── Color themes per stage ──────────────────────────────────────── */
+    .s1  .stage-header { background: #111820; }
+    .s1  .stage-number { background: var(--accent1); color: #000; }
+    .s1  .stage-badge  { background: #1f3044; color: var(--accent1); }
+
+    .s2  .stage-header { background: #111820; }
+    .s2  .stage-number { background: var(--accent3); color: #000; }
+    .s2  .stage-badge  { background: #2d2000; color: var(--accent3); }
+    .s2  .card-tag     { background: #2d2000; color: var(--accent3); }
+
+    .s3  .stage-header { background: #111820; }
+    .s3  .stage-number { background: var(--accent5); color: #fff; }
+    .s3  .stage-badge  { background: #221540; color: var(--accent5); }
+    .s3  .card-tag     { background: #221540; color: var(--accent5); }
+
+    .s4  .stage-header { background: #111820; }
+    .s4  .stage-number { background: var(--accent4); color: #fff; }
+    .s4  .stage-badge  { background: #2d0f0f; color: var(--accent4); }
+    .s4  .card-tag     { background: #2d0f0f; color: var(--accent4); }
+
+    .s5  .stage-header { background: #111820; }
+    .s5  .stage-number { background: var(--accent1); color: #000; }
+    .s5  .stage-badge  { background: #1f3044; color: var(--accent1); }
+    .s5  .card-tag     { background: #1f3044; color: var(--accent1); }
+
+    .s6  .stage-header { background: #111820; }
+    .s6  .stage-number { background: var(--accent4); color: #fff; }
+    .s6  .stage-badge  { background: #2d0f0f; color: var(--accent4); }
+    .s6  .card-tag     { background: #2d0f0f; color: var(--accent4); }
+
+    .s7  .stage-header { background: #111820; }
+    .s7  .stage-number { background: var(--accent2); color: #000; }
+    .s7  .stage-badge  { background: #0d2b14; color: var(--accent2); }
+    .s7  .card-tag     { background: #0d2b14; color: var(--accent2); }
+
+    .s8  .stage-header { background: #111820; }
+    .s8  .stage-number { background: var(--accent6); color: #000; }
+    .s8  .stage-badge  { background: #0d2b14; color: var(--accent6); }
+    .s8  .card-tag     { background: #0d2b14; color: var(--accent6); }
+
+    /* ── Refinement sub-pipeline (stage 6) ──────────────────────────── */
+    .refine-flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 0 20px 16px;
+      overflow-x: auto;
+    }
+    .refine-card {
+      flex: 1 1 140px;
+      min-width: 130px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      background: var(--bg);
+    }
+    .refine-card .card-title { font-size: .78rem; }
+    .refine-card .card-meta  { font-size: .68rem; }
+    .refine-arrow {
+      padding: 0 8px;
+      color: var(--muted);
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    /* ── Ensemble sub-flow (stage 5) ─────────────────────────────────── */
+    .ensemble-wrap {
+      padding: 0 20px 16px;
+    }
+    .ensemble-sources {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .ensemble-sources .card { flex: 1 1 160px; }
+    .ensemble-merge {
+      display: flex;
+      align-items: stretch;
+      gap: 12px;
+    }
+    .ensemble-merge::before {
+      content: "";
+      border-left: 2px dashed var(--border);
+      margin-left: 20px;
+    }
+    .meta-card {
+      flex: 1;
+      border: 1px solid var(--accent1);
+      border-radius: 8px;
+      padding: 14px 16px;
+      background: #0d1a2d;
+    }
+    .meta-card .card-title { color: var(--accent1); }
+
+    /* ── Utility classes (replaces inline styles) ───────────────────── */
+    .card-new-border    { border-color: #f85149; }
+    .card-accent-border { border-color: var(--accent1); }
+    .new-label          { color: #f85149; font-size: .8rem; }
+    .cards-indices      { padding-bottom: 4px; }
+    .card-full          { flex-basis: 100%; }
+    .card-meta-flex     { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    .idx-tag            { background: #1f3044; color: var(--accent1); padding: 2px 8px; border-radius: 4px; font-size: .7rem; display: inline-block; }
+    .idx-tag-new        { background: #2d0f0f; color: var(--accent4); padding: 2px 8px; border-radius: 4px; font-size: .7rem; display: inline-block; }
+    .card-meta-mt       { margin-top: 8px; }
+    .legend-heading     { font-size: .8rem; font-weight: 600; color: var(--text); margin-right: 8px; }
+    .legend-divider     { width: 1px; background: var(--border); margin: 0 8px; }
+    .legend-version     { margin-left: auto; font-size: .73rem; color: var(--muted); }
+    .legend-dot.d-a1    { background: var(--accent1); }
+    .legend-dot.d-a2    { background: var(--accent2); }
+    .legend-dot.d-a3    { background: var(--accent3); }
+    .legend-dot.d-a4    { background: var(--accent4); }
+    .legend-dot.d-a5    { background: var(--accent5); }
+
+    /* ── Footer legend ─────────────────────────────────────────────────*/
+    .legend {
+      max-width: 1100px;
+      margin: 40px auto 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 16px 20px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: .78rem;
+      color: var(--muted);
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ Quantum Flood Frequency Mapper — Pipeline Architecture v3.0</h1>
+  <p>Sentinel-1 SAR · DEM/HAND Terrain · 3-Qubit Quantum-Inspired Ensemble · 1 m Super-Resolution</p>
+</header>
+
+<div class="pipeline">
+
+  <!-- ── Stage 1: Input ───────────────────────────────────────────── -->
+  <div class="stage s1">
+    <div class="stage-header">
+      <div class="stage-number">1</div>
+      <div class="stage-title">INPUT — Study Area Definition</div>
+      <div class="stage-badge">AOI</div>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <span class="card-icon">🗺️</span>
+        <div class="card-title">AOI Builder</div>
+        <div class="card-meta">Houston, TX · WGS-84<br/>Centre + buffer_km<br/>Default: 5 km radius</div>
+      </div>
+      <div class="card">
+        <span class="card-icon">📐</span>
+        <div class="card-title">Bounding Box</div>
+        <div class="card-meta">West / East / North / South<br/>EPSG:4326 coordinates<br/>UTM 15N target CRS</div>
+      </div>
+      <div class="card">
+        <span class="card-icon">⏱️</span>
+        <div class="card-title">Temporal Window</div>
+        <div class="card-meta">Start ↔ End date (ISO 8601)<br/>Default: 2015–2025<br/>~10 years · max coverage</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><span>▼</span></div>
+
+  <!-- ── Stage 2: Acquisition ─────────────────────────────────────── -->
+  <div class="stage s2">
+    <div class="stage-header">
+      <div class="stage-number">2</div>
+      <div class="stage-title">MULTI-SENSOR ACQUISITION — Planetary Computer STAC API</div>
+      <div class="stage-badge">5× SENSORS</div>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <span class="card-icon">🛰️</span>
+        <div class="card-title">Landsat 8/9 C2L2</div>
+        <div class="card-meta">30 m native · 6 bands<br/>Blue · Green · Red · NIR<br/>SWIR1 · SWIR2 · QA_PIXEL<br/>2013–present</div>
+        <span class="card-tag">landsat-c2-l2</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">🛰️</span>
+        <div class="card-title">Sentinel-2 L2A</div>
+        <div class="card-meta">10 m native · 6 bands + SCL<br/>Blue · Green · Red · NIR<br/>SWIR1 · SWIR2 · SCL mask<br/>2015–present</div>
+        <span class="card-tag">sentinel-2-l2a</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">✈️</span>
+        <div class="card-title">NAIP Aerial</div>
+        <div class="card-meta">~1 m native · 4 bands<br/>Blue · Green · Red · NIR<br/>Spatial guide for SR<br/>CONUS coverage</div>
+        <span class="card-tag">naip</span>
+      </div>
+      <div class="card card-new-border">
+        <span class="new-badge">NEW</span>
+        <span class="card-icon">📡</span>
+        <div class="card-title">Sentinel-1 SAR GRD</div>
+        <div class="card-meta">10 m · VV + VH bands<br/>All-weather · day/night<br/>IW mode · C-band 5.6 cm<br/>2014–present</div>
+        <span class="card-tag">sentinel-1-grd</span>
+      </div>
+      <div class="card card-new-border">
+        <span class="new-badge">NEW</span>
+        <span class="card-icon">⛰️</span>
+        <div class="card-title">Copernicus DEM GLO-30</div>
+        <div class="card-meta">30 m · elevation (m)<br/>Global · static layer<br/>TanDEM-X derived<br/>Vertical accuracy ≤4 m</div>
+        <span class="card-tag">cop-dem-glo-30</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><span>▼</span></div>
+
+  <!-- ── Stage 3: Preprocessing ───────────────────────────────────── -->
+  <div class="stage s3">
+    <div class="stage-header">
+      <div class="stage-number">3</div>
+      <div class="stage-title">PREPROCESSING — Super-Resolution · Co-registration · Cloud Masking</div>
+      <div class="stage-badge">1 m TARGET</div>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <span class="card-icon">🔬</span>
+        <div class="card-title">Spectral-Guided SR</div>
+        <div class="card-meta">Landsat 30 → 1 m<br/>Sentinel-2 10 → 1 m<br/>NAIP as spatial guide<br/>SRMethod.SPECTRAL_GUIDED</div>
+        <span class="card-tag">super_resolution.py</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">📍</span>
+        <div class="card-title">Co-registration</div>
+        <div class="card-meta">All sensors aligned to<br/>NAIP 1 m reference grid<br/>Bilinear resampling<br/>Common transform</div>
+        <span class="card-tag">preprocessing.py</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">☁️</span>
+        <div class="card-title">Cloud Masking</div>
+        <div class="card-meta">SCL classes 4/5/6/11 (S2)<br/>QA_PIXEL bits (Landsat)<br/>Per-observation mask<br/>Propagated to all steps</div>
+        <span class="card-tag">Per-scene</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">📦</span>
+        <div class="card-title">AlignedStack</div>
+        <div class="card-meta">N observations × H × W<br/>Bands: blue/green/red/nir<br/>swir1/swir2/cloud_mask<br/>+ SAR features + terrain</div>
+        <span class="card-tag">dataclass</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><span>▼</span></div>
+
+  <!-- ── Stage 4: Static Context ──────────────────────────────────── -->
+  <div class="stage s4">
+    <div class="stage-header">
+      <div class="stage-number">4</div>
+      <div class="stage-title">STATIC CONTEXT LAYERS — SAR Composite · DEM/HAND Terrain &nbsp;<span class="new-label">▶ NEW in v3.0</span></div>
+      <div class="stage-badge">PHYSICS-BASED</div>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <span class="card-icon">📡</span>
+        <div class="card-title">DN → σ⁰ Conversion</div>
+        <div class="card-meta">SAR DN to calibrated<br/>backscatter (dB)<br/>σ⁰ = 10·log₁₀(DN²)</div>
+        <span class="card-tag">sar_processor.py</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">🌀</span>
+        <div class="card-title">Lee Speckle Filter</div>
+        <div class="card-meta">7×7 adaptive window<br/>4.4 effective looks<br/>Edge-preserving smoothing</div>
+        <span class="card-tag">Lee 1981</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">🗂️</span>
+        <div class="card-title">SAR Temporal Composite</div>
+        <div class="card-meta">Mean VV · Mean VH<br/>VH/VV ratio (vegetation)<br/>SAR Water Index<br/>Water mask: VV &lt; −15 dB<br/>Building mask: VV &gt; −5 dB</div>
+        <span class="card-tag">SAR features</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">📉</span>
+        <div class="card-title">DEM Slope</div>
+        <div class="card-meta">Horn 3×3 method<br/>Gradient in degrees (0–90°)<br/>Same as GDAL gdaldem<br/>Flood max: &lt; 5°</div>
+        <span class="card-tag">terrain.py</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">🌊</span>
+        <div class="card-title">HAND (Height Above<br/>Nearest Drainage)</div>
+        <div class="card-meta">Vertical dist. to stream<br/>High risk: &lt; 5 m<br/>Moderate: 5–15 m<br/>Negligible: &gt; 30 m</div>
+        <span class="card-tag">Nobre 2011</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">🎯</span>
+        <div class="card-title">Flood Susceptibility</div>
+        <div class="card-meta">Sigmoid(HAND + Slope)<br/>Combined [0, 1] score<br/>Terrain mask: HAND &gt; 30 m</div>
+        <span class="card-tag">Constraint layer</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><span>▼</span></div>
+
+  <!-- ── Stage 5: Classification ──────────────────────────────────── -->
+  <div class="stage s5">
+    <div class="stage-header">
+      <div class="stage-number">5</div>
+      <div class="stage-title">QUANTUM-INSPIRED ENSEMBLE CLASSIFICATION — QIEC v3.0</div>
+      <div class="stage-badge">3-QUBIT</div>
+    </div>
+
+    <!-- Spectral indices row -->
+    <div class="cards cards-indices">
+      <div class="card card-full">
+        <span class="card-icon">📊</span>
+        <div class="card-title">Spectral Indices + Multi-Source Pseudo-Labels</div>
+        <div class="card-meta card-meta-flex">
+          <span class="idx-tag">NDWI = (Green−NIR)/(Green+NIR)</span>
+          <span class="idx-tag">MNDWI = (Green−SWIR1)/(Green+SWIR1)</span>
+          <span class="idx-tag">AWEI_sh = 4(Green−SWIR1)−(0.25·NIR+2.75·SWIR2)</span>
+          <span class="idx-tag">NDVI = (NIR−Red)/(NIR+Red)</span>
+          <span class="idx-tag">BSI = (SWIR1+Red−NIR−Blue)/(SWIR1+Red+NIR+Blue)</span>
+          <span class="idx-tag-new">NDBI = (SWIR1−NIR)/(SWIR1+NIR)  ← NEW urban mask</span>
+          <span class="idx-tag-new">WRI = (Green+Red)/(NIR+SWIR1)  ← NEW water ratio</span>
+        </div>
+        <div class="card-meta card-meta-mt">Pseudo-labels = consensus(NDWI, SAR water mask, HAND &lt; 30 m, NDBI &lt; 0.1) — richer supervision signal than NDWI alone</div>
+      </div>
+    </div>
+
+    <!-- Ensemble components -->
+    <div class="ensemble-wrap">
+      <div class="ensemble-sources">
+        <div class="card">
+          <span class="card-icon">⚛️</span>
+          <div class="card-title">3-Qubit QFE</div>
+          <div class="card-meta">8 basis quantum states<br/>Ry gates (θ per index)<br/>CZ₁₂ · CZ₂₃ · CZ₁₃<br/>Variational 2-layer ansatz<br/>Born rule → P(water)</div>
+          <span class="card-tag">quantum</span>
+        </div>
+        <div class="card">
+          <span class="card-icon">🔮</span>
+          <div class="card-title">Quantum Kernel SVM</div>
+          <div class="card-meta">K(xᵢ,xⱼ) = |⟨φ(xᵢ)|φ(xⱼ)⟩|²<br/>8-dim Hilbert space kernel<br/>C=10, probability=True<br/>5,000 training pixels</div>
+          <span class="card-tag">QK-SVM</span>
+        </div>
+        <div class="card">
+          <span class="card-icon">🌲</span>
+          <div class="card-title">Gradient-Boosted Ensemble</div>
+          <div class="card-meta">200 trees · depth 5<br/>LR=0.10 · subsample=0.8<br/>Features: spectral + SAR<br/>+ terrain + NDBI + WRI</div>
+          <span class="card-tag">GBSIE</span>
+        </div>
+        <div class="card card-accent-border">
+          <span class="card-icon">🧠</span>
+          <div class="card-title">Meta-Learner</div>
+          <div class="card-meta">Ridge regression stacking<br/>Inputs: QFE · SVM · GB<br/>+ quantum confidence<br/>Replaces fixed BMA</div>
+          <span class="card-tag">Stacked generalization</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><span>▼</span></div>
+
+  <!-- ── Stage 6: Refinement ──────────────────────────────────────── -->
+  <div class="stage s6">
+    <div class="stage-header">
+      <div class="stage-number">6</div>
+      <div class="stage-title">POST-CLASSIFICATION REFINEMENT — SAR · Terrain · Urban · Morphology &nbsp;<span class="new-label">▶ NEW in v3.0</span></div>
+      <div class="stage-badge">4 FILTERS</div>
+    </div>
+    <div class="refine-flow">
+
+      <div class="refine-card">
+        <span class="card-icon">🏙️</span>
+        <div class="card-title">Urban Suppression</div>
+        <div class="card-meta">NDBI &gt; 0 → built-up<br/>Water prob × 0.15<br/>Prevents rooftop FP</div>
+      </div>
+      <div class="refine-arrow">→</div>
+
+      <div class="refine-card">
+        <span class="card-icon">📡</span>
+        <div class="card-title">SAR Discrimination</div>
+        <div class="card-meta">VV &lt; −15 dB → water boost ×1.4<br/>VV &gt; −5 dB → building suppress ×0.10<br/>Physics-grounded mask</div>
+      </div>
+      <div class="refine-arrow">→</div>
+
+      <div class="refine-card">
+        <span class="card-icon">⛰️</span>
+        <div class="card-title">Terrain Constraint</div>
+        <div class="card-meta">Prob × flood_susceptibility<br/>HAND &gt; 30 m → mask to 0<br/>No water on hilltops</div>
+      </div>
+      <div class="refine-arrow">→</div>
+
+      <div class="refine-card">
+        <span class="card-icon">🔵</span>
+        <div class="card-title">Morphological Filter</div>
+        <div class="card-meta">Binary opening (5×5 disc)<br/>Remove clusters &lt; 50 px<br/>Binary closing (smooth)<br/>Eliminates building clusters</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="connector"><span>▼</span></div>
+
+  <!-- ── Stage 7: Frequency ───────────────────────────────────────── -->
+  <div class="stage s7">
+    <div class="stage-header">
+      <div class="stage-number">7</div>
+      <div class="stage-title">TEMPORAL FREQUENCY AGGREGATION — Wilson Confidence Intervals</div>
+      <div class="stage-badge">STATISTICS</div>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <span class="card-icon">📦</span>
+        <div class="card-title">Tiled Accumulator</div>
+        <div class="card-meta">Per-pixel water_count<br/>Per-pixel obs_count<br/>uint16 running sums<br/>512×512 tile batches</div>
+        <span class="card-tag">tiled_pipeline.py</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">📐</span>
+        <div class="card-title">Wilson CI</div>
+        <div class="card-meta">P̂ = water_count / obs_count<br/>95% confidence interval<br/>Lower + upper bounds<br/>Handles n=0 gracefully</div>
+        <span class="card-tag">flood_engine.py</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">🗺️</span>
+        <div class="card-title">Flood Zone Classification</div>
+        <div class="card-meta">Frequent  ≥ 50% observations<br/>Moderate  25–50%<br/>Occasional  5–25%<br/>Rare  1–5%</div>
+        <span class="card-tag">4 zones</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">🧩</span>
+        <div class="card-title">Temporal Mosaicker</div>
+        <div class="card-meta">Median composite (optical)<br/>Mean composite (SAR)<br/>Best-pixel (max NDVI)<br/>Percentile composites</div>
+        <span class="card-tag">mosaic.py</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><span>▼</span></div>
+
+  <!-- ── Stage 8: Outputs ─────────────────────────────────────────── -->
+  <div class="stage s8">
+    <div class="stage-header">
+      <div class="stage-number">8</div>
+      <div class="stage-title">OUTPUT PRODUCTS — Rasters · Maps · FEMA Comparison</div>
+      <div class="stage-badge">DELIVERABLES</div>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <span class="card-icon">🗃️</span>
+        <div class="card-title">GeoTIFF Rasters</div>
+        <div class="card-meta">flood_frequency.tif<br/>flood_zones.tif<br/>confidence_bounds.tif<br/>Full CRS + transform</div>
+        <span class="card-tag">RASTER</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">🌊</span>
+        <div class="card-title">FEMA Overlay</div>
+        <div class="card-meta">Floodway polygons<br/>100-year flood zone<br/>500-year flood zone<br/>GeoJSON + ESRI shapefile</div>
+        <span class="card-tag">FEMA NFHL</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">🗺️</span>
+        <div class="card-title">Static Maps</div>
+        <div class="card-meta">flood_frequency_map.png<br/>fema_comparison_map.png<br/>observation_stats.png<br/>Matplotlib cartography</div>
+        <span class="card-tag">PNG</span>
+      </div>
+      <div class="card">
+        <span class="card-icon">🌐</span>
+        <div class="card-title">Interactive Viewer</div>
+        <div class="card-meta">interactive_flood_map.html<br/>Folium + Leaflet.js<br/>Layer toggles · pop-ups<br/>FEMA zone comparison</div>
+        <span class="card-tag">HTML</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end .pipeline -->
+
+<!-- ── Legend ──────────────────────────────────────────────────────── -->
+<div class="legend">
+  <div class="legend-heading">Data Sources:</div>
+  <div class="legend-item"><div class="legend-dot d-a3"></div> Optical (Landsat / Sentinel-2)</div>
+  <div class="legend-item"><div class="legend-dot d-a1"></div> Multispectral Aerial (NAIP 1 m)</div>
+  <div class="legend-item"><div class="legend-dot d-a4"></div> SAR Radar (Sentinel-1)</div>
+  <div class="legend-item"><div class="legend-dot d-a5"></div> Elevation (Copernicus DEM)</div>
+  <div class="legend-divider"></div>
+  <div class="legend-heading">Methods:</div>
+  <div class="legend-item"><div class="legend-dot d-a1"></div> 3-Qubit VQC (8 states)</div>
+  <div class="legend-item"><div class="legend-dot d-a5"></div> Quantum Kernel SVM</div>
+  <div class="legend-item"><div class="legend-dot d-a2"></div> Gradient Boosting</div>
+  <div class="legend-item"><div class="legend-dot d-a4"></div> Ridge Meta-Learner</div>
+  <div class="legend-version">v3.0 · SAR + DEM + Quantum-Inspired · 1 m resolution</div>
+</div>
+
+</body>
+</html>

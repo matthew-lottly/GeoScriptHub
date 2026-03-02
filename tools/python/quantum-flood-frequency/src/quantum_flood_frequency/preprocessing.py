@@ -52,11 +52,15 @@ from .super_resolution import (
     _upsample_bicubic,
     _downsample_area,
 )
+from .sar_processor import SARProcessor, SARFeatures
+from .terrain import TerrainProcessor, TerrainFeatures
 
 logger = logging.getLogger("geoscripthub.quantum_flood_frequency.preprocessing")
 
-# Target resolution — now 10 m (3× finer than v1.0's 30 m)
-TARGET_RESOLUTION = 10   # metres — Sentinel-2 native optical
+# Target resolution — now 1 m (NAIP native) for maximum accuracy.
+# v2.0 was 10 m; v3.0 upsamples all sensors to NAIP resolution.
+# Use --resolution CLI flag to override (e.g. 10 for faster runs).
+TARGET_RESOLUTION = 1    # metres — NAIP native resolution
 NODATA = np.nan
 
 
@@ -103,14 +107,22 @@ class AlignedStack:
     crs: str = ""
     bounds: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
     total_scenes: int = 0
+    sar_features: Optional[SARFeatures] = None
+    terrain_features: Optional[TerrainFeatures] = None
 
     def __post_init__(self) -> None:
         self.total_scenes = len(self.observations)
 
     def __repr__(self) -> str:
+        extras = []
+        if self.sar_features is not None and self.sar_features.n_observations > 0:
+            extras.append(f"SAR={self.sar_features.n_observations}")
+        if self.terrain_features is not None and self.terrain_features.valid_mask.any():
+            extras.append("DEM")
+        extra_str = f"  +{','.join(extras)}" if extras else ""
         return (
             f"<AlignedStack  {self.total_scenes} observations  "
-            f"{self.cols}×{self.rows} px  {self.resolution}m>"
+            f"{self.cols}×{self.rows} px  {self.resolution}m{extra_str}>"
         )
 
 
@@ -179,48 +191,67 @@ class ImagePreprocessor:
         landsat: xr.DataArray,
         sentinel2: xr.DataArray,
         naip: xr.DataArray,
+        sentinel1: Optional[xr.DataArray] = None,
+        dem: Optional[xr.DataArray] = None,
     ) -> AlignedStack:
         """Process all sensors and return pixel-aligned observations.
 
-        v2.0: Super-resolves Landsat (30→10 m) and Sentinel-2 SWIR
-        (20→10 m) instead of downsampling everything to 30 m.
+        v3.0: Resamples ALL sensors to NAIP resolution (1 m).
+        Adds Sentinel-1 SAR and DEM/terrain as static feature layers
+        for improved water/building discrimination.
 
         Args:
             landsat: Raw Landsat DataArray from acquisition.
             sentinel2: Raw Sentinel-2 DataArray from acquisition.
             naip: Raw NAIP DataArray from acquisition.
+            sentinel1: Raw Sentinel-1 GRD SAR DataArray (optional).
+            dem: Raw Copernicus DEM DataArray (optional).
 
         Returns:
             AlignedStack with all observations harmonised to the
-            10 m target grid.
+            target grid, plus SAR and terrain features.
         """
         observations: list[dict] = []
+        target_shape = (self.rows, self.cols)
 
-        # Process Sentinel-2 first (used as guide for Landsat SR)
-        s2_guide_obs: Optional[dict] = None
-        if sentinel2.sizes.get("time", 0) > 0:
-            s2_obs = self._process_sentinel2(sentinel2)
-            observations.extend(s2_obs)
-            logger.info("Processed %d Sentinel-2 observations (10 m)", len(s2_obs))
-            if s2_obs:
-                s2_guide_obs = s2_obs[0]  # use first S2 as spatial guide
-
-        # Process NAIP (potential guide for both Landsat and S2)
+        # Process NAIP first (at/near native 1 m — used as SR guide)
         naip_guide_obs: Optional[dict] = None
         if naip.sizes.get("time", 0) > 0:
             naip_obs = self._process_naip(naip)
             observations.extend(naip_obs)
-            logger.info("Processed %d NAIP observations (1→10 m downsample)", len(naip_obs))
+            logger.info("Processed %d NAIP observations (native/resample to %d m)", len(naip_obs), self.target_resolution)
             if naip_obs:
                 naip_guide_obs = naip_obs[0]
 
-        # Process Landsat with super-resolution (30→10 m)
+        # Process Sentinel-2 (used as intermediate guide for Landsat SR)
+        s2_guide_obs: Optional[dict] = None
+        if sentinel2.sizes.get("time", 0) > 0:
+            # If target is 1 m, S2 will be upsampled 10→1 m using NAIP guide
+            s2_obs = self._process_sentinel2(sentinel2, guide_obs=naip_guide_obs)
+            observations.extend(s2_obs)
+            logger.info("Processed %d Sentinel-2 observations (→%d m)", len(s2_obs), self.target_resolution)
+            if s2_obs:
+                s2_guide_obs = s2_obs[0]
+
+        # Process Landsat with super-resolution (30→target m)
         if landsat.sizes.get("time", 0) > 0:
             # Choose best available guide: NAIP > Sentinel-2
             guide = naip_guide_obs or s2_guide_obs
             ls_obs = self._process_landsat(landsat, guide_obs=guide)
             observations.extend(ls_obs)
-            logger.info("Processed %d Landsat observations (30→10 m SR)", len(ls_obs))
+            logger.info("Processed %d Landsat observations (30→%d m SR)", len(ls_obs), self.target_resolution)
+
+        # Process Sentinel-1 SAR (static composite for water/building discrimination)
+        sar_features: Optional[SARFeatures] = None
+        if sentinel1 is not None and sentinel1.sizes.get("time", 0) > 0:
+            sar_features = self._process_sentinel1(sentinel1)
+            logger.info("Processed SAR composite: %s", sar_features)
+
+        # Process DEM (static terrain features)
+        terrain_features: Optional[TerrainFeatures] = None
+        if dem is not None and dem.sizes.get("time", dem.sizes.get("band", 0)) > 0:
+            terrain_features = self._process_dem(dem)
+            logger.info("Processed terrain features: %s", terrain_features)
 
         logger.info(
             "Alignment complete — %d total observations on %d×%d grid @ %d m",
@@ -235,6 +266,8 @@ class ImagePreprocessor:
             transform=self.transform,
             crs=self.aoi.target_crs,
             bounds=self.bounds,
+            sar_features=sar_features,
+            terrain_features=terrain_features,
         )
 
     # ------------------------------------------------------------------
@@ -310,12 +343,13 @@ class ImagePreprocessor:
     # Sentinel-2 processing — native 10 m optical, 20→10 m SWIR
     # ------------------------------------------------------------------
 
-    def _process_sentinel2(self, data: xr.DataArray) -> list[dict]:
-        """Extract Sentinel-2 observations at 10 m resolution.
+    def _process_sentinel2(self, data: xr.DataArray, guide_obs: Optional[dict] = None) -> list[dict]:
+        """Extract Sentinel-2 observations at target resolution.
 
-        B02, B03, B04, B08 are native 10 m — used without resampling.
-        B11, B12 (SWIR) are 20 m — bicubic upsampled to 10 m.
-        SCL is 20 m — nearest-neighbour upsampled for cloud mask.
+        B02, B03, B04, B08 are native 10 m.
+        B11, B12 (SWIR) are 20 m.
+        All are upsampled to target resolution (1 m if NAIP guide available,
+        otherwise bicubic to target shape).
 
         Surface reflectance scale: 0–10000 → /10000 for [0, 1].
         """
@@ -349,35 +383,28 @@ class ImagePreprocessor:
                 # SCL cloud mask
                 cloud_mask = np.isin(scl, [4, 5, 6, 11])
 
-                # Snap all bands to target grid
-                blue = _upsample_bicubic(blue, target_shape) if blue.shape != target_shape else blue
-                green = _upsample_bicubic(green, target_shape) if green.shape != target_shape else green
-                red = _upsample_bicubic(red, target_shape) if red.shape != target_shape else red
-                nir = _upsample_bicubic(nir, target_shape) if nir.shape != target_shape else nir
-
-                # SWIR bands: 20 m → 10 m upsampling
-                swir1 = _upsample_bicubic(swir1, target_shape)
-                swir2 = _upsample_bicubic(swir2, target_shape)
-
-                # Cloud mask: nearest-neighbour upsampling
-                cloud_mask = self._regrid_mask(cloud_mask, cloud_mask.shape, target_shape)
-
-                # Clip reflectance to valid range
-                blue = np.clip(blue, 0.0, 1.0)
-                green = np.clip(green, 0.0, 1.0)
-                red = np.clip(red, 0.0, 1.0)
-                nir = np.clip(nir, 0.0, 1.0)
-                swir1 = np.clip(swir1, 0.0, 1.0)
-                swir2 = np.clip(swir2, 0.0, 1.0)
-
-                obs_list.append({
+                # Snap all bands to target grid (with NAIP-guided SR if available)
+                native_obs_s2 = {
                     "blue": blue, "green": green, "red": red,
                     "nir": nir, "swir1": swir1, "swir2": swir2,
                     "cloud_mask": cloud_mask,
-                    "source": "sentinel2",
-                    "date": date_str,
-                    "sr_method": "native_10m",
-                })
+                    "source": "sentinel2", "date": date_str,
+                }
+                sr_obs_s2 = self._sr_engine.upscale_observation(
+                    native_obs_s2,
+                    source_resolution=10,
+                    target_shape=target_shape,
+                    guide_obs=guide_obs,
+                )
+
+                # Clip reflectance to valid range
+                for bk in ["blue", "green", "red", "nir", "swir1", "swir2"]:
+                    if bk in sr_obs_s2:
+                        sr_obs_s2[bk] = np.clip(sr_obs_s2[bk], 0.0, 1.0)
+
+                sr_obs_s2["sr_method"] = f"sr_{self.target_resolution}m"
+
+                obs_list.append(sr_obs_s2)
 
             except Exception as exc:
                 logger.warning("Skipping Sentinel-2 scene %s: %s", date_str, exc)
@@ -386,15 +413,15 @@ class ImagePreprocessor:
         return obs_list
 
     # ------------------------------------------------------------------
-    # NAIP processing — 1 m → 10 m area-weighted downsample
+    # NAIP processing — resample to target resolution
     # ------------------------------------------------------------------
 
     def _process_naip(self, data: xr.DataArray) -> list[dict]:
-        """Extract NAIP observations and downsample 1 m → 10 m.
+        """Extract NAIP observations at target resolution.
 
-        Still a downsample, but at 10 m (not 30 m), NAIP preserves
-        far more spatial detail — building footprints, narrow streams,
-        individual tree canopies.
+        If target is 1 m (NAIP native), bands are regridded to the
+        exact target shape with no downsampling.  If target > 1 m,
+        area-weighted downsample is applied.
 
         NAIP is 4-band (R, G, B, NIR) with uint8 [0, 255].
         SWIR bands are NaN (not available from aerial imagery).
@@ -423,11 +450,20 @@ class ImagePreprocessor:
                     logger.warning("NAIP scene %s unexpected shape %s", date_str, vals.shape)
                     continue
 
-                # Area-weighted downsample 1 m → 10 m (anti-aliased)
-                red = _downsample_area(red_raw, target_shape)
-                green = _downsample_area(green_raw, target_shape)
-                blue = _downsample_area(blue_raw, target_shape)
-                nir = _downsample_area(nir_raw, target_shape)
+                # Resample to target shape
+                if self.target_resolution >= 1:
+                    # At 1 m: regrid to exact target shape (bilinear snap)
+                    # At >1 m: area-weighted downsample
+                    if red_raw.shape[0] > target_shape[0]:
+                        red = _downsample_area(red_raw, target_shape)
+                        green = _downsample_area(green_raw, target_shape)
+                        blue = _downsample_area(blue_raw, target_shape)
+                        nir = _downsample_area(nir_raw, target_shape)
+                    else:
+                        red = _upsample_bicubic(red_raw, target_shape) if red_raw.shape != target_shape else red_raw
+                        green = _upsample_bicubic(green_raw, target_shape) if green_raw.shape != target_shape else green_raw
+                        blue = _upsample_bicubic(blue_raw, target_shape) if blue_raw.shape != target_shape else blue_raw
+                        nir = _upsample_bicubic(nir_raw, target_shape) if nir_raw.shape != target_shape else nir_raw
 
                 # NAIP lacks SWIR
                 swir_placeholder = np.full(target_shape, np.nan, dtype="float32")
@@ -441,7 +477,7 @@ class ImagePreprocessor:
                     "cloud_mask": cloud_mask,
                     "source": "naip",
                     "date": date_str,
-                    "sr_method": "area_downsample_10m",
+                    "sr_method": f"naip_{self.target_resolution}m",
                 })
 
             except Exception as exc:
@@ -449,6 +485,83 @@ class ImagePreprocessor:
                 continue
 
         return obs_list
+
+    # ------------------------------------------------------------------
+    # Sentinel-1 SAR processing — temporal composite
+    # ------------------------------------------------------------------
+
+    def _process_sentinel1(self, data: xr.DataArray) -> SARFeatures:
+        """Process Sentinel-1 GRD SAR imagery into feature layers.
+
+        Creates a temporal mean composite from all available SAR scenes,
+        then derives VV/VH backscatter, water index, and building mask.
+
+        Returns:
+            SARFeatures at target resolution.
+        """
+        target_shape = (self.rows, self.cols)
+        sar_proc = SARProcessor(target_shape=target_shape)
+
+        n_time = data.sizes.get("time", 0)
+        for t in range(n_time):
+            try:
+                scene = data.isel(time=t).compute()
+
+                band_names = list(
+                    scene.coords.get("band", scene.coords.get("band_name", [])).values
+                )
+                band_lookup = {str(b): i for i, b in enumerate(band_names)}
+
+                vv = scene[band_lookup.get("vv", 0)].values.astype("float32")
+                vh = scene[band_lookup.get("vh", 1)].values.astype("float32")
+
+                # Replace zeros/negatives with small positive values
+                vv = np.maximum(vv, 1e-10)
+                vh = np.maximum(vh, 1e-10)
+
+                sar_proc.add_observation(vv, vh)
+
+            except Exception as exc:
+                logger.warning("Skipping SAR scene %d: %s", t, exc)
+                continue
+
+        return sar_proc.compute_features()
+
+    # ------------------------------------------------------------------
+    # DEM / Terrain processing
+    # ------------------------------------------------------------------
+
+    def _process_dem(self, data: xr.DataArray) -> Optional[TerrainFeatures]:
+        """Process Copernicus DEM into terrain constraint features.
+
+        Returns:
+            TerrainFeatures at target resolution.
+        """
+        target_shape = (self.rows, self.cols)
+        terrain_proc = TerrainProcessor(
+            target_shape=target_shape,
+            target_resolution=float(self.target_resolution),
+        )
+
+        try:
+            # DEM may have time dim (multiple tiles) — take first or merge
+            if "time" in data.dims and data.sizes["time"] > 0:
+                # Merge tiles by taking the mean where they overlap
+                dem_array = data.isel(time=0).compute().values
+                if dem_array.ndim == 3:
+                    dem_array = dem_array[0]  # take first band
+            else:
+                dem_array = data.compute().values
+                if dem_array.ndim == 3:
+                    dem_array = dem_array[0]
+                elif dem_array.ndim == 4:
+                    dem_array = dem_array[0, 0]
+
+            return terrain_proc.process(dem_array.astype("float32"), dem_resolution=30.0)
+
+        except Exception as exc:
+            logger.warning("DEM processing failed: %s — skipping terrain", exc)
+            return None
 
     # ------------------------------------------------------------------
     # Resampling utilities

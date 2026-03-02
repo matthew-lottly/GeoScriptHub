@@ -58,6 +58,16 @@ LANDSAT_RESOLUTION = 30  # metres
 S2_BANDS = ["B02", "B03", "B04", "B08", "B11", "B12", "SCL"]
 S2_RESOLUTION = 10  # metres — fetch at 10 m (native optical), SWIR upsampled in preprocessing
 
+# Sentinel-1 GRD IW — C-band SAR (VV + VH dual-pol)
+# Key for water/building discrimination: water=low VV, buildings=high VV
+S1_BANDS = ["vv", "vh"]
+S1_RESOLUTION = 10  # metres (GRD IW native)
+
+# Copernicus GLO-30 DEM — global 30 m digital elevation model
+DEM_COLLECTION = "cop-dem-glo-30"
+DEM_BANDS = ["data"]  # single elevation band
+DEM_RESOLUTION = 30   # metres
+
 # NAIP — 4-band (R, G, B, NIR) at ~1 m
 NAIP_BANDS = ["image"]  # NAIP stores all 4 bands in a single asset
 NAIP_RESOLUTION = 1  # metre
@@ -74,25 +84,33 @@ class SensorStack:
     Attributes:
         landsat: Landsat 8/9 C2L2 xarray DataArray — dims (time, band, y, x).
         sentinel2: Sentinel-2 L2A xarray DataArray — dims (time, band, y, x).
+        sentinel1: Sentinel-1 GRD SAR xarray DataArray — dims (time, band, y, x).
         naip: NAIP xarray DataArray — dims (time, band, y, x).
+        dem: Copernicus DEM xarray DataArray — dims (band, y, x).
         landsat_count: Number of Landsat scenes retrieved.
         sentinel2_count: Number of Sentinel-2 scenes retrieved.
+        sentinel1_count: Number of Sentinel-1 scenes retrieved.
         naip_count: Number of NAIP tiles retrieved.
         aoi: The AOI used for acquisition.
     """
 
     landsat: xr.DataArray
     sentinel2: xr.DataArray
+    sentinel1: xr.DataArray
     naip: xr.DataArray
+    dem: xr.DataArray
     landsat_count: int
     sentinel2_count: int
+    sentinel1_count: int
     naip_count: int
     aoi: AOIResult
 
     def __repr__(self) -> str:  # noqa: D105
         return (
             f"<SensorStack  Landsat={self.landsat_count}  "
-            f"Sentinel-2={self.sentinel2_count}  NAIP={self.naip_count}>"
+            f"Sentinel-2={self.sentinel2_count}  "
+            f"Sentinel-1 SAR={self.sentinel1_count}  "
+            f"NAIP={self.naip_count}>"
         )
 
 
@@ -164,19 +182,25 @@ class MultiSensorAcquisition:
 
         landsat, n_ls = self._fetch_landsat(catalog)
         sentinel2, n_s2 = self._fetch_sentinel2(catalog)
+        sentinel1, n_s1 = self._fetch_sentinel1(catalog)
         naip, n_naip = self._fetch_naip(catalog)
+        dem, _ = self._fetch_dem(catalog)
 
         logger.info(
-            "Acquisition complete — Landsat: %d, Sentinel-2: %d, NAIP: %d scenes",
-            n_ls, n_s2, n_naip,
+            "Acquisition complete — Landsat: %d, Sentinel-2: %d, "
+            "Sentinel-1 SAR: %d, NAIP: %d scenes",
+            n_ls, n_s2, n_s1, n_naip,
         )
 
         return SensorStack(
             landsat=landsat,
             sentinel2=sentinel2,
+            sentinel1=sentinel1,
             naip=naip,
+            dem=dem,
             landsat_count=n_ls,
             sentinel2_count=n_s2,
+            sentinel1_count=n_s1,
             naip_count=n_naip,
             aoi=self.aoi,
         )
@@ -286,6 +310,86 @@ class MultiSensorAcquisition:
             signed,
             assets=NAIP_BANDS,
             resolution=NAIP_RESOLUTION,
+            epsg=int(self.aoi.target_crs.split(":")[1]),
+            bounds=self.aoi.bbox_utm,
+            chunksize=self.chunk_size,
+            dtype=np.dtype("float64"),
+            fill_value=np.nan,
+        )
+
+        return stack, n_items
+
+    def _fetch_sentinel1(
+        self, catalog: pystac_client.Client
+    ) -> tuple[xr.DataArray, int]:
+        """Query Sentinel-1 GRD IW SAR scenes.
+
+        SAR operates regardless of cloud cover or daylight — every
+        scene is usable.  We fetch VV and VH polarisation bands for
+        water/building discrimination.
+
+        Planetary Computer collection: ``sentinel-1-grd``.
+        """
+        logger.info("Querying Sentinel-1 GRD SAR (all-weather) …")
+
+        search = catalog.search(
+            collections=["sentinel-1-grd"],
+            bbox=self._bbox,
+            datetime=self._datetime_range,
+        )
+        items = list(search.items())
+        n_items = len(items)
+        logger.info("  → Found %d Sentinel-1 SAR scenes", n_items)
+
+        if n_items == 0:
+            warnings.warn("No Sentinel-1 scenes found — returning empty DataArray")
+            return self._empty_array(), 0
+
+        signed = [planetary_computer.sign(item) for item in items]
+
+        stack = stackstac.stack(
+            signed,
+            assets=S1_BANDS,
+            resolution=S1_RESOLUTION,
+            epsg=int(self.aoi.target_crs.split(":")[1]),
+            bounds=self.aoi.bbox_utm,
+            chunksize=self.chunk_size,
+            dtype=np.dtype("float64"),
+            fill_value=np.nan,
+        )
+
+        return stack, n_items
+
+    def _fetch_dem(
+        self, catalog: pystac_client.Client
+    ) -> tuple[xr.DataArray, int]:
+        """Fetch Copernicus GLO-30 DEM (single static layer).
+
+        The DEM is a static dataset — we fetch one tile covering the AOI.
+        Used for HAND computation and terrain-constrained flood mapping.
+
+        Planetary Computer collection: ``cop-dem-glo-30``.
+        """
+        logger.info("Querying Copernicus GLO-30 DEM …")
+
+        search = catalog.search(
+            collections=[DEM_COLLECTION],
+            bbox=self._bbox,
+        )
+        items = list(search.items())
+        n_items = len(items)
+        logger.info("  → Found %d DEM tiles", n_items)
+
+        if n_items == 0:
+            warnings.warn("No DEM tiles found — returning empty DataArray")
+            return self._empty_array(), 0
+
+        signed = [planetary_computer.sign(item) for item in items]
+
+        stack = stackstac.stack(
+            signed,
+            assets=DEM_BANDS,
+            resolution=DEM_RESOLUTION,
             epsg=int(self.aoi.target_crs.split(":")[1]),
             bounds=self.aoi.bbox_utm,
             chunksize=self.chunk_size,
